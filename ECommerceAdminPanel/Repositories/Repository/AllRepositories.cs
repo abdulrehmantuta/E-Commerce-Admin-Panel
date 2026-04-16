@@ -67,6 +67,72 @@ public class TenantRepository : ITenantRepository
 /// <summary>
 /// User Repository Implementation
 /// </summary>
+// public class UserRepository : IUserRepository
+// {
+//     private readonly DapperHelper _dapperHelper;
+
+//     public UserRepository(DapperHelper dapperHelper)
+//     {
+//         _dapperHelper = dapperHelper;
+//     }
+
+//     public async Task<int> CreateAsync(User entity)
+//     {
+//         var parameters = new DynamicParameters();
+//         parameters.Add("@TenantId", entity.TenantId);
+//         parameters.Add("@Name", entity.Name);
+//         parameters.Add("@Email", entity.Email);
+//         parameters.Add("@PasswordHash", entity.PasswordHash);
+//         parameters.Add("@Role", entity.Role);
+
+//         var result = await _dapperHelper.ExecuteScalarAsync("sp_User_Create", parameters);
+//         return result != null ? Convert.ToInt32(result) : 0;
+//     }
+
+//     public async Task<User?> GetByIdAsync(int id)
+//     {
+//         var parameters = new DynamicParameters();
+//         parameters.Add("@UserId", id);
+//         return await _dapperHelper.QuerySingleOrDefaultAsync<User>("sp_User_GetById", parameters);
+//     }
+
+//     public async Task<List<User>> GetAllAsync(int pageNumber = 1, int pageSize = 10)
+//     {
+//         var parameters = new DynamicParameters();
+//         parameters.Add("@PageNumber", pageNumber);
+//         parameters.Add("@PageSize", pageSize);
+//         return await _dapperHelper.QueryAsync<User>("sp_User_GetAll", parameters);
+//     }
+
+//     public async Task<List<User>> GetByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+//     {
+//         var parameters = new DynamicParameters();
+//         parameters.Add("@TenantId", tenantId);
+//         parameters.Add("@PageNumber", pageNumber);
+//         parameters.Add("@PageSize", pageSize);
+//         return await _dapperHelper.QueryAsync<User>("sp_User_GetByTenant", parameters);
+//     }
+
+//     public async Task<int> UpdateAsync(int id, User entity)
+//     {
+//         var parameters = new DynamicParameters();
+//         parameters.Add("@UserId", id);
+//         parameters.Add("@Name", entity.Name);
+//         parameters.Add("@Email", entity.Email);
+//         parameters.Add("@Role", entity.Role);
+//         parameters.Add("@Status", entity.Status);
+//         return await _dapperHelper.ExecuteAsync("sp_User_Update", parameters);
+//     }
+
+//     public async Task<int> DeleteAsync(int id)
+//     {
+//         var parameters = new DynamicParameters();
+//         parameters.Add("@UserId", id);
+//         return await _dapperHelper.ExecuteAsync("sp_User_Delete", parameters);
+//     }
+// }
+
+
 public class UserRepository : IUserRepository
 {
     private readonly DapperHelper _dapperHelper;
@@ -129,6 +195,13 @@ public class UserRepository : IUserRepository
         var parameters = new DynamicParameters();
         parameters.Add("@UserId", id);
         return await _dapperHelper.ExecuteAsync("sp_User_Delete", parameters);
+    }
+
+    public async Task<User?> GetByEmailAsync(string email)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@Email", email);
+        return await _dapperHelper.QuerySingleOrDefaultAsync<User>("sp_User_GetByEmail", parameters);
     }
 }
 

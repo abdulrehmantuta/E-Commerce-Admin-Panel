@@ -70,7 +70,7 @@ public class ProductController : ControllerBase
         var result = await _service.GetProductsByCategoryAsync(categoryId, pageNumber, pageSize);
         return StatusCode(result.StatusCode, result);
     }
-
+    
     /// <summary>
     /// Update product
     /// </summary>

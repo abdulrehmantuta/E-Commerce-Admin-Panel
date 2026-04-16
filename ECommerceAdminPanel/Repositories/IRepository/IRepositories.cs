@@ -1,5 +1,5 @@
 namespace ECommerceAdminPanel.Repositories.IRepository;
-
+using ECommerceAdminPanel.DTOs.Request; 
 using ECommerceAdminPanel.Models;
 using ECommerceAdminPanel.DTOs.Response;
 
@@ -61,6 +61,8 @@ public interface ITenantRepository : IBaseRepository<Tenant>
 public interface IUserRepository : IBaseRepository<User>
 {
     Task<List<User>> GetByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10);
+        Task<User?> GetByEmailAsync(string email); // ← yeh add karo
+
 }
 
 /// <summary>
@@ -76,6 +78,7 @@ public interface IPageRepository : IBaseRepository<Page>
 /// </summary>
 public interface ISectionRepository : IBaseRepository<Section>
 {
+    // Task<List<Section>> GetByPageAsync(int pageId);
     Task<List<Section>> GetByPageAsync(int pageId);
 }
 
@@ -86,3 +89,9 @@ public interface ISectionDataRepository : IBaseRepository<SectionData>
 {
     Task<List<SectionData>> GetBySectionAsync(int sectionId);
 }
+
+
+
+/// <summary>
+/// Customer Repository Interface
+/// </summary>

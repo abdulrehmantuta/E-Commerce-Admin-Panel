@@ -111,3 +111,19 @@ public interface ISectionDataService
     Task<ApiResponse<bool>> UpdateSectionDataAsync(int dataId, SectionDataRequestDto request);
     Task<ApiResponse<bool>> DeleteSectionDataAsync(int dataId);
 }
+
+
+
+/// <summary>
+/// SectionData Service Interface
+/// </summary>
+
+public interface ICustomerService
+{
+    Task<ApiResponse<CustomerResponseDto>> CreateCustomerAsync(CustomerCreateDto request);
+    Task<ApiResponse<CustomerResponseDto>> GetCustomerByIdAsync(int customerId);
+    Task<ApiResponse<PaginatedResponse<CustomerResponseDto>>> GetCustomersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10);
+    Task<ApiResponse<bool>> UpdateCustomerAsync(int customerId, CustomerUpdateDto request);
+    Task<ApiResponse<bool>> DeleteCustomerAsync(int customerId);
+}
+

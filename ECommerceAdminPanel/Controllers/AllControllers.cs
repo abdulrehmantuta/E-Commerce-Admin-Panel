@@ -441,3 +441,97 @@ public class SectionDataController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 }
+
+
+/// <summary>
+/// Customer Management API Controller
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class CustomerController : ControllerBase
+{
+    private readonly ICustomerService _service;
+    private readonly ILogger<CustomerController> _logger;
+
+    public CustomerController(ICustomerService service, ILogger<CustomerController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
+    [HttpPost("create")]
+    public async Task<ActionResult<ApiResponse<CustomerResponseDto>>> CreateCustomer(
+        [FromBody] CustomerCreateDto request)
+    {
+        if (request == null)
+            return BadRequest("Request cannot be null");
+
+        if (string.IsNullOrWhiteSpace(request.FirstName))
+            return BadRequest("FirstName is required");
+
+        _logger.LogInformation(
+            "Creating customer: {FirstName} {LastName}",
+            request.FirstName,
+            request.LastName
+        );
+
+        var result = await _service.CreateCustomerAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ApiResponse<CustomerResponseDto>>> GetCustomerById(int id)
+    {
+        if (id <= 0)
+            return BadRequest("Invalid Customer Id");
+
+        _logger.LogInformation("Getting customer with ID: {CustomerId}", id);
+
+        var result = await _service.GetCustomerByIdAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("tenant/{tenantId}")]
+    public async Task<ActionResult<ApiResponse<PaginatedResponse<CustomerResponseDto>>>> GetCustomersByTenant(
+        int tenantId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        if (tenantId <= 0)
+            return BadRequest("Invalid Tenant Id");
+
+        _logger.LogInformation("Getting customers for tenant: {TenantId}", tenantId);
+
+        var result = await _service.GetCustomersByTenantAsync(tenantId, pageNumber, pageSize);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<ApiResponse<bool>>> UpdateCustomer(
+        int id,
+        [FromBody] CustomerUpdateDto request)
+    {
+        if (id <= 0)
+            return BadRequest("Invalid Customer Id");
+
+        if (request == null)
+            return BadRequest("Request cannot be null");
+
+        _logger.LogInformation("Updating customer with ID: {CustomerId}", id);
+
+        var result = await _service.UpdateCustomerAsync(id, request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteCustomer(int id)
+    {
+        if (id <= 0)
+            return BadRequest("Invalid Customer Id");
+
+        _logger.LogInformation("Deleting customer with ID: {CustomerId}", id);
+
+        var result = await _service.DeleteCustomerAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+}

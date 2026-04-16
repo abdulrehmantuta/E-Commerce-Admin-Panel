@@ -50,5 +50,12 @@ public class AutoMapperProfile : Profile
         // SectionData mappings
         CreateMap<SectionData, SectionDataResponseDto>().ReverseMap();
         CreateMap<SectionData, SectionDataRequestDto>().ReverseMap();
+
+
+
+        // Customer mappings
+        CreateMap<Customer, CustomerResponseDto>().ReverseMap();
+        CreateMap<Customer, CustomerCreateDto>().ReverseMap();
+        CreateMap<Customer, CustomerUpdateDto>().ReverseMap();
     }
 }

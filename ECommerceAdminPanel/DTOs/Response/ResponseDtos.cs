@@ -168,3 +168,20 @@ public class PaginatedResponse<T>
     public bool HasPreviousPage => PageNumber > 1;
     public bool HasNextPage => PageNumber < TotalPages;
 }
+
+/// <summary>
+/// Customer Response DTO
+/// </summary>
+public class CustomerResponseDto
+{
+    public int CustomerId { get; set; }
+    public int TenantId { get; set; }
+
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+
+    public string? Email { get; set; }
+
+    public bool Status { get; set; }
+    public DateTime CreatedDate { get; set; }
+}

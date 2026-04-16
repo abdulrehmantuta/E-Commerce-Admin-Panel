@@ -556,9 +556,11 @@ public class TenantService : ITenantService
     }
 }
 
+
 /// <summary>
 /// User Service Implementation
 /// </summary>
+
 public class UserService : IUserService
 {
     private readonly IUserRepository _repository;
@@ -575,6 +577,7 @@ public class UserService : IUserService
         try
         {
             var user = _mapper.Map<User>(request);
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
             user.CreatedDate = DateTime.Now;
             user.Status = true;
 
@@ -673,6 +676,8 @@ public class UserService : IUserService
         }
     }
 }
+
+
 
 /// <summary>
 /// Page Service Implementation
@@ -1011,3 +1016,129 @@ public class SectionDataService : ISectionDataService
         }
     }
 }
+
+
+
+
+/// <summary>
+/// Customer Service Implementation
+/// </summary>
+
+
+
+
+public class CustomerService : ICustomerService
+{
+    private readonly ICustomerRepository _repository;
+    private readonly IMapper _mapper;
+
+    public CustomerService(ICustomerRepository repository, IMapper mapper)
+    {
+        _repository = repository;
+        _mapper = mapper;
+    }
+
+    public async Task<ApiResponse<CustomerResponseDto>> CreateCustomerAsync(CustomerCreateDto request)
+    {
+        try
+        {
+            var customer = _mapper.Map<Customer>(request);
+            customer.Status = true;
+
+            var id = await _repository.CreateAsync(customer);
+            if (id <= 0)
+                return ApiResponse<CustomerResponseDto>.ErrorResponse("Failed to create customer", 400);
+
+            var created = await _repository.GetByIdAsync(id);
+            var response = _mapper.Map<CustomerResponseDto>(created);
+
+            return ApiResponse<CustomerResponseDto>.SuccessResponse(response, "Customer created successfully", 201);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<CustomerResponseDto>.ErrorResponse($"Error creating customer: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<CustomerResponseDto>> GetCustomerByIdAsync(int customerId)
+    {
+        try
+        {
+            var customer = await _repository.GetByIdAsync(customerId);
+            if (customer == null)
+                return ApiResponse<CustomerResponseDto>.ErrorResponse("Customer not found", 404);
+
+            var response = _mapper.Map<CustomerResponseDto>(customer);
+            return ApiResponse<CustomerResponseDto>.SuccessResponse(response, "Customer retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<CustomerResponseDto>.ErrorResponse($"Error retrieving customer: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<PaginatedResponse<CustomerResponseDto>>> GetCustomersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+    {
+        try
+        {
+            var customers = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+
+            var response = new PaginatedResponse<CustomerResponseDto>
+            {
+                Items = _mapper.Map<List<CustomerResponseDto>>(customers),
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = customers.Count
+            };
+
+            return ApiResponse<PaginatedResponse<CustomerResponseDto>>.SuccessResponse(response, "Customers retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PaginatedResponse<CustomerResponseDto>>.ErrorResponse($"Error retrieving customers: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> UpdateCustomerAsync(int customerId, CustomerUpdateDto request)
+    {
+        try
+        {
+            var existing = await _repository.GetByIdAsync(customerId);
+            if (existing == null)
+                return ApiResponse<bool>.ErrorResponse("Customer not found", 404);
+
+            _mapper.Map(request, existing);
+
+            var result = await _repository.UpdateAsync(customerId, existing);
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to update customer", 400);
+
+            return ApiResponse<bool>.SuccessResponse(true, "Customer updated successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error updating customer: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteCustomerAsync(int customerId)
+    {
+        try
+        {
+            var existing = await _repository.GetByIdAsync(customerId);
+            if (existing == null)
+                return ApiResponse<bool>.ErrorResponse("Customer not found", 404);
+
+            var result = await _repository.DeleteAsync(customerId);
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to delete customer", 400);
+
+            return ApiResponse<bool>.SuccessResponse(true, "Customer deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error deleting customer: {ex.Message}", 500);
+        }
+    }
+}
+
