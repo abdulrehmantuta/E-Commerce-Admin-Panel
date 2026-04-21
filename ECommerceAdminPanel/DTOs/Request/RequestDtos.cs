@@ -43,6 +43,9 @@ public class CategoryRequestDto
     public string Name { get; set; } = string.Empty;
     public int? ParentCategoryId { get; set; }
     public bool Status { get; set; } = true;
+
+    public IFormFile? Image { get; set; }
+
 }
 
 /// <summary>
@@ -54,7 +57,7 @@ public class ProductCreateRequestDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Price { get; set; }
-    public string? ImageUrl { get; set; }
+    public IFormFile? Image { get; set; }   // ✅ NEW
     public int? CategoryId { get; set; }
     public int StockQty { get; set; }
 }
@@ -67,7 +70,7 @@ public class ProductUpdateRequestDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Price { get; set; }
-    public string? ImageUrl { get; set; }
+    public IFormFile? Image { get; set; }   // ✅ NEW
     public int? CategoryId { get; set; }
     public int StockQty { get; set; }
     public bool Status { get; set; }

@@ -21,13 +21,20 @@ public class CategoryController : ControllerBase
         _logger = logger;
     }
 
+    // [HttpPost("create")]
+    // public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> CreateCategory([FromBody] CategoryRequestDto request)
+    // {
+    //     _logger.LogInformation("Creating category: {CategoryName}", request.Name);
+    //     var result = await _service.CreateCategoryAsync(request);
+    //     return StatusCode(result.StatusCode, result);
+    // }
+
     [HttpPost("create")]
-    public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> CreateCategory([FromBody] CategoryRequestDto request)
-    {
-        _logger.LogInformation("Creating category: {CategoryName}", request.Name);
-        var result = await _service.CreateCategoryAsync(request);
-        return StatusCode(result.StatusCode, result);
-    }
+public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> CreateCategory([FromForm] CategoryRequestDto request)
+{
+    var result = await _service.CreateCategoryAsync(request);
+    return StatusCode(result.StatusCode, result);
+}
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponse<CategoryResponseDto>>> GetCategoryById(int id)
@@ -48,14 +55,20 @@ public class CategoryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult<ApiResponse<bool>>> UpdateCategory(int id, [FromBody] CategoryRequestDto request)
-    {
-        _logger.LogInformation("Updating category with ID: {CategoryId}", id);
-        var result = await _service.UpdateCategoryAsync(id, request);
-        return StatusCode(result.StatusCode, result);
-    }
+    // [HttpPut("{id}")]
+    // public async Task<ActionResult<ApiResponse<bool>>> UpdateCategory(int id, [FromBody] CategoryRequestDto request)
+    // {
+    //     _logger.LogInformation("Updating category with ID: {CategoryId}", id);
+    //     var result = await _service.UpdateCategoryAsync(id, request);
+    //     return StatusCode(result.StatusCode, result);
+    // }
 
+[HttpPut("{id}")]
+public async Task<ActionResult<ApiResponse<bool>>> UpdateCategory(int id, [FromForm] CategoryRequestDto request)
+{
+    var result = await _service.UpdateCategoryAsync(id, request);
+    return StatusCode(result.StatusCode, result);
+}
     [HttpDelete("{id}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteCategory(int id)
     {

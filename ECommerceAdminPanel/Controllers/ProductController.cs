@@ -24,13 +24,21 @@ public class ProductController : ControllerBase
     /// <summary>
     /// Create a new product
     /// </summary>
+    // [HttpPost("create")]
+    // public async Task<ActionResult<ApiResponse<ProductResponseDto>>> CreateProduct([FromBody] ProductCreateRequestDto request)
+    // {
+    //     _logger.LogInformation("Creating product: {ProductName}", request.Name);
+    //     var result = await _service.CreateProductAsync(request);
+    //     return StatusCode(result.StatusCode, result);
+    // }
+
     [HttpPost("create")]
-    public async Task<ActionResult<ApiResponse<ProductResponseDto>>> CreateProduct([FromBody] ProductCreateRequestDto request)
-    {
-        _logger.LogInformation("Creating product: {ProductName}", request.Name);
-        var result = await _service.CreateProductAsync(request);
-        return StatusCode(result.StatusCode, result);
-    }
+public async Task<ActionResult<ApiResponse<ProductResponseDto>>> CreateProduct([FromForm] ProductCreateRequestDto request)
+{
+    _logger.LogInformation("Creating product: {ProductName}", request.Name);
+    var result = await _service.CreateProductAsync(request);
+    return StatusCode(result.StatusCode, result);
+}
 
     /// <summary>
     /// Get product by ID

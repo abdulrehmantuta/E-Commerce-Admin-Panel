@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Microsoft.Extensions.FileProviders; // ✅ ADD
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,11 +62,10 @@ builder.Services.AddAuthorization();
 // Connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// ✅ IMPORTANT: Register IDbConnection (FIX)
+// Register IDbConnection
 builder.Services.AddScoped<IDbConnection>(sp =>
     new SqlConnection(connectionString!));
 
-// (Optional) If you are using helper, keep it
 builder.Services.AddScoped(_ =>
     new DapperHelper(connectionString!));
 
@@ -143,6 +143,21 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+
+// ✅ Default wwwroot static files
+app.UseStaticFiles();
+
+// ✅ Uploads folder serve karne ke liye
+var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+if (!Directory.Exists(uploadsPath))
+{
+    Directory.CreateDirectory(uploadsPath);
+}
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -223,6 +223,7 @@ public class CategoryRepository : ICategoryRepository
         parameters.Add("@TenantId", entity.TenantId);
         parameters.Add("@Name", entity.Name);
         parameters.Add("@ParentCategoryId", entity.ParentCategoryId);
+        parameters.Add("@ImageUrl", entity.ImageUrl);
 
         var result = await _dapperHelper.ExecuteScalarAsync("sp_Category_Create", parameters);
         return result != null ? Convert.ToInt32(result) : 0;
@@ -253,14 +254,19 @@ public class CategoryRepository : ICategoryRepository
     }
 
     public async Task<int> UpdateAsync(int id, Category entity)
-    {
-        var parameters = new DynamicParameters();
-        parameters.Add("@CategoryId", id);
-        parameters.Add("@Name", entity.Name);
-        parameters.Add("@ParentCategoryId", entity.ParentCategoryId);
-        parameters.Add("@Status", entity.Status);
-        return await _dapperHelper.ExecuteAsync("sp_Category_Update", parameters);
-    }
+{
+    var parameters = new DynamicParameters();
+    parameters.Add("@CategoryId", id);
+    parameters.Add("@Name", entity.Name);
+    parameters.Add("@ParentCategoryId", entity.ParentCategoryId);
+
+    // ✅ SAFE handling
+    parameters.Add("@ImageUrl", entity.ImageUrl ?? (object)DBNull.Value);
+
+    parameters.Add("@Status", entity.Status);
+
+    return await _dapperHelper.ExecuteAsync("sp_Category_Update", parameters);
+}
 
     public async Task<int> DeleteAsync(int id)
     {

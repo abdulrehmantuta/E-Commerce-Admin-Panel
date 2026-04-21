@@ -21,29 +21,69 @@ public class ProductService : IProductService
         _mapper = mapper;
     }
 
+    // public async Task<ApiResponse<ProductResponseDto>> CreateProductAsync(ProductCreateRequestDto request)
+    // {
+    //     try
+    //     {
+    //         var product = _mapper.Map<Product>(request);
+    //         product.CreatedDate = DateTime.Now;
+    //         product.Status = true;
+
+    //         var id = await _repository.CreateAsync(product);
+    //         if (id <= 0)
+    //             return ApiResponse<ProductResponseDto>.ErrorResponse("Failed to create product", 400);
+
+    //         // Fetch the created product
+    //         var created = await _repository.GetByIdAsync(id);
+    //         var response = _mapper.Map<ProductResponseDto>(created);
+
+    //         return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product created successfully", 201);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         return ApiResponse<ProductResponseDto>.ErrorResponse($"Error creating product: {ex.Message}", 500);
+    //     }
+    // }
+
     public async Task<ApiResponse<ProductResponseDto>> CreateProductAsync(ProductCreateRequestDto request)
+{
+    try
     {
-        try
+        var product = _mapper.Map<Product>(request);
+        product.CreatedDate = DateTime.Now;
+        product.Status = true;
+
+        // ✅ IMAGE SAVE LOGIC
+        if (request.Image != null)
         {
-            var product = _mapper.Map<Product>(request);
-            product.CreatedDate = DateTime.Now;
-            product.Status = true;
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads/products");
 
-            var id = await _repository.CreateAsync(product);
-            if (id <= 0)
-                return ApiResponse<ProductResponseDto>.ErrorResponse("Failed to create product", 400);
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
 
-            // Fetch the created product
-            var created = await _repository.GetByIdAsync(id);
-            var response = _mapper.Map<ProductResponseDto>(created);
+            var fileName = Guid.NewGuid() + Path.GetExtension(request.Image.FileName);
+            var filePath = Path.Combine(uploadsFolder, fileName);
 
-            return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product created successfully", 201);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await request.Image.CopyToAsync(stream);
+            }
+
+            product.ImageUrl = "/uploads/products/" + fileName;
         }
-        catch (Exception ex)
-        {
-            return ApiResponse<ProductResponseDto>.ErrorResponse($"Error creating product: {ex.Message}", 500);
-        }
+
+        var id = await _repository.CreateAsync(product);
+
+        var created = await _repository.GetByIdAsync(id);
+        var response = _mapper.Map<ProductResponseDto>(created);
+
+        return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product created successfully", 201);
     }
+    catch (Exception ex)
+    {
+        return ApiResponse<ProductResponseDto>.ErrorResponse(ex.Message, 500);
+    }
+}
 
     public async Task<ApiResponse<ProductResponseDto>> GetProductByIdAsync(int productId)
     {
@@ -150,22 +190,169 @@ public class ProductService : IProductService
 /// <summary>
 /// Category Service Implementation
 /// </summary>
+// public class CategoryService : ICategoryService
+// {
+//     private readonly ICategoryRepository _repository;
+//     private readonly IMapper _mapper;
+
+//     public CategoryService(ICategoryRepository repository, IMapper mapper)
+//     {
+//         _repository = repository;
+//         _mapper = mapper;
+//     }
+
+//     public async Task<ApiResponse<CategoryResponseDto>> CreateCategoryAsync(CategoryRequestDto request)
+//     {
+//         try
+//         {
+//             var category = _mapper.Map<Category>(request);
+//             category.Status = true;
+
+//             var id = await _repository.CreateAsync(category);
+//             if (id <= 0)
+//                 return ApiResponse<CategoryResponseDto>.ErrorResponse("Failed to create category", 400);
+
+//             var created = await _repository.GetByIdAsync(id);
+//             var response = _mapper.Map<CategoryResponseDto>(created);
+
+//             return ApiResponse<CategoryResponseDto>.SuccessResponse(response, "Category created successfully", 201);
+//         }
+//         catch (Exception ex)
+//         {
+//             return ApiResponse<CategoryResponseDto>.ErrorResponse($"Error creating category: {ex.Message}", 500);
+//         }
+//     }
+
+//     public async Task<ApiResponse<CategoryResponseDto>> GetCategoryByIdAsync(int categoryId)
+//     {
+//         try
+//         {
+//             var category = await _repository.GetByIdAsync(categoryId);
+//             if (category == null)
+//                 return ApiResponse<CategoryResponseDto>.ErrorResponse("Category not found", 404);
+
+//             var response = _mapper.Map<CategoryResponseDto>(category);
+//             return ApiResponse<CategoryResponseDto>.SuccessResponse(response, "Category retrieved successfully");
+//         }
+//         catch (Exception ex)
+//         {
+//             return ApiResponse<CategoryResponseDto>.ErrorResponse($"Error retrieving category: {ex.Message}", 500);
+//         }
+//     }
+
+//     public async Task<ApiResponse<PaginatedResponse<CategoryResponseDto>>> GetCategoriesByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+//     {
+//         try
+//         {
+//             var categories = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+//             var response = new PaginatedResponse<CategoryResponseDto>
+//             {
+//                 Items = _mapper.Map<List<CategoryResponseDto>>(categories),
+//                 PageNumber = pageNumber,
+//                 PageSize = pageSize,
+//                 TotalCount = categories.Count
+//             };
+
+//             return ApiResponse<PaginatedResponse<CategoryResponseDto>>.SuccessResponse(response, "Categories retrieved successfully");
+//         }
+//         catch (Exception ex)
+//         {
+//             return ApiResponse<PaginatedResponse<CategoryResponseDto>>.ErrorResponse($"Error retrieving categories: {ex.Message}", 500);
+//         }
+//     }
+
+//     public async Task<ApiResponse<bool>> UpdateCategoryAsync(int categoryId, CategoryRequestDto request)
+//     {
+//         try
+//         {
+//             var existing = await _repository.GetByIdAsync(categoryId);
+//             if (existing == null)
+//                 return ApiResponse<bool>.ErrorResponse("Category not found", 404);
+
+//             _mapper.Map(request, existing);
+//             var result = await _repository.UpdateAsync(categoryId, existing);
+
+//             if (result <= 0)
+//                 return ApiResponse<bool>.ErrorResponse("Failed to update category", 400);
+
+//             return ApiResponse<bool>.SuccessResponse(true, "Category updated successfully");
+//         }
+//         catch (Exception ex)
+//         {
+//             return ApiResponse<bool>.ErrorResponse($"Error updating category: {ex.Message}", 500);
+//         }
+//     }
+
+//     public async Task<ApiResponse<bool>> DeleteCategoryAsync(int categoryId)
+//     {
+//         try
+//         {
+//             var existing = await _repository.GetByIdAsync(categoryId);
+//             if (existing == null)
+//                 return ApiResponse<bool>.ErrorResponse("Category not found", 404);
+
+//             var result = await _repository.DeleteAsync(categoryId);
+//             if (result <= 0)
+//                 return ApiResponse<bool>.ErrorResponse("Failed to delete category", 400);
+
+//             return ApiResponse<bool>.SuccessResponse(true, "Category deleted successfully");
+//         }
+//         catch (Exception ex)
+//         {
+//             return ApiResponse<bool>.ErrorResponse($"Error deleting category: {ex.Message}", 500);
+//         }
+//     }
+// }
+
+
 public class CategoryService : ICategoryService
 {
     private readonly ICategoryRepository _repository;
     private readonly IMapper _mapper;
+    private readonly IWebHostEnvironment _env;
 
-    public CategoryService(ICategoryRepository repository, IMapper mapper)
+    public CategoryService(ICategoryRepository repository, IMapper mapper, IWebHostEnvironment env)
     {
         _repository = repository;
         _mapper = mapper;
+        _env = env;
     }
 
+    // ✅ COMMON IMAGE SAVE METHOD
+   private async Task<string?> SaveImageAsync(IFormFile? file)
+{
+    if (file == null) return null;
+
+    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+
+    var uploadsFolder = Path.Combine(webRoot, "uploads", "categories");
+
+    if (!Directory.Exists(uploadsFolder))
+        Directory.CreateDirectory(uploadsFolder);
+
+    var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+    var filePath = Path.Combine(uploadsFolder, fileName);
+
+    using (var stream = new FileStream(filePath, FileMode.Create))
+    {
+        await file.CopyToAsync(stream);
+    }
+
+    return "/uploads/categories/" + fileName;
+}
+
+    // ✅ CREATE
     public async Task<ApiResponse<CategoryResponseDto>> CreateCategoryAsync(CategoryRequestDto request)
     {
         try
         {
             var category = _mapper.Map<Category>(request);
+
+            // image save
+            var imageUrl = await SaveImageAsync(request.Image);
+            if (imageUrl != null)
+                category.ImageUrl = imageUrl;
+
             category.Status = true;
 
             var id = await _repository.CreateAsync(category);
@@ -183,6 +370,7 @@ public class CategoryService : ICategoryService
         }
     }
 
+    // ✅ GET BY ID
     public async Task<ApiResponse<CategoryResponseDto>> GetCategoryByIdAsync(int categoryId)
     {
         try
@@ -200,11 +388,13 @@ public class CategoryService : ICategoryService
         }
     }
 
+    // ✅ GET ALL
     public async Task<ApiResponse<PaginatedResponse<CategoryResponseDto>>> GetCategoriesByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
     {
         try
         {
             var categories = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+
             var response = new PaginatedResponse<CategoryResponseDto>
             {
                 Items = _mapper.Map<List<CategoryResponseDto>>(categories),
@@ -221,6 +411,7 @@ public class CategoryService : ICategoryService
         }
     }
 
+    // ✅ UPDATE (WITH IMAGE REPLACE)
     public async Task<ApiResponse<bool>> UpdateCategoryAsync(int categoryId, CategoryRequestDto request)
     {
         try
@@ -230,6 +421,22 @@ public class CategoryService : ICategoryService
                 return ApiResponse<bool>.ErrorResponse("Category not found", 404);
 
             _mapper.Map(request, existing);
+
+            // new image upload
+            if (request.Image != null)
+            {
+                // delete old image (optional but recommended)
+                if (!string.IsNullOrEmpty(existing.ImageUrl))
+                {
+                    var oldPath = Path.Combine(_env.WebRootPath, existing.ImageUrl.TrimStart('/'));
+                    if (File.Exists(oldPath))
+                        File.Delete(oldPath);
+                }
+
+                var newImage = await SaveImageAsync(request.Image);
+                existing.ImageUrl = newImage;
+            }
+
             var result = await _repository.UpdateAsync(categoryId, existing);
 
             if (result <= 0)
@@ -243,6 +450,7 @@ public class CategoryService : ICategoryService
         }
     }
 
+    // ✅ DELETE
     public async Task<ApiResponse<bool>> DeleteCategoryAsync(int categoryId)
     {
         try
@@ -251,7 +459,16 @@ public class CategoryService : ICategoryService
             if (existing == null)
                 return ApiResponse<bool>.ErrorResponse("Category not found", 404);
 
+            // delete image
+            if (!string.IsNullOrEmpty(existing.ImageUrl))
+            {
+                var path = Path.Combine(_env.WebRootPath, existing.ImageUrl.TrimStart('/'));
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+
             var result = await _repository.DeleteAsync(categoryId);
+
             if (result <= 0)
                 return ApiResponse<bool>.ErrorResponse("Failed to delete category", 400);
 
@@ -264,7 +481,8 @@ public class CategoryService : ICategoryService
     }
 }
 
-/// <summary>
+
+// /// <summary>
 /// Order Service Implementation
 /// </summary>
 public class OrderService : IOrderService
