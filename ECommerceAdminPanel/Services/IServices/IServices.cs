@@ -62,6 +62,9 @@ public interface ITenantService
     Task<ApiResponse<PaginatedResponse<TenantResponseDto>>> GetAllTenantsAsync(int pageNumber = 1, int pageSize = 10);
     Task<ApiResponse<bool>> UpdateTenantAsync(int tenantId, TenantRequestDto request);
     Task<ApiResponse<bool>> DeleteTenantAsync(int tenantId);
+    //new
+    Task<ApiResponse<TenantResponseDto>> GetTenantByDomainAsync(string domain); // ✅ ADD
+
 }
 
 /// <summary>

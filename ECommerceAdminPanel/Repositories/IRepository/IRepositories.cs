@@ -52,7 +52,10 @@ public interface IOrderDetailRepository : IBaseRepository<OrderDetail>
 /// Tenant Repository Interface
 /// </summary>
 public interface ITenantRepository : IBaseRepository<Tenant>
+    //new
 {
+    Task<Tenant?> GetByDomainAsync(string domain); // ✅ ADD
+
 }
 
 /// <summary>

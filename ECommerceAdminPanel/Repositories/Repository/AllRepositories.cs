@@ -62,6 +62,14 @@ public class TenantRepository : ITenantRepository
         parameters.Add("@TenantId", id);
         return await _dapperHelper.ExecuteAsync("sp_Tenant_Delete", parameters);
     }
+    //new
+
+    public async Task<Tenant?> GetByDomainAsync(string domain)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@Domain", domain);
+        return await _dapperHelper.QuerySingleOrDefaultAsync<Tenant>("sp_Tenant_GetByDomain", parameters);
+    }
 }
 
 /// <summary>

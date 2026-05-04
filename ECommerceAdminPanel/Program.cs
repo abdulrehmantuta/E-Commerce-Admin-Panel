@@ -10,14 +10,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using Microsoft.Extensions.FileProviders; // ✅ ADD
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add controllers
 builder.Services.AddControllers();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -28,13 +26,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Logging
 builder.Services.AddLogging();
-
-// AutoMapper
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
-// JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? string.Empty;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
@@ -59,17 +53,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Register IDbConnection
-builder.Services.AddScoped<IDbConnection>(sp =>
-    new SqlConnection(connectionString!));
+builder.Services.AddScoped<IDbConnection>(sp => new SqlConnection(connectionString!));
+builder.Services.AddScoped(_ => new DapperHelper(connectionString!));
 
-builder.Services.AddScoped(_ =>
-    new DapperHelper(connectionString!));
-
-// Repositories
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -81,7 +69,6 @@ builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ISectionDataRepository, SectionDataRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 
-// Services
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -93,7 +80,6 @@ builder.Services.AddScoped<ISectionDataService, SectionDataService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -131,28 +117,23 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "E-Commerce API v1");
-        options.RoutePrefix = string.Empty;
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "E-Commerce API v1");
+    options.RoutePrefix = string.Empty;
+});
 
-app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
-// ✅ Default wwwroot static files
+// Static files
 app.UseStaticFiles();
 
-// ✅ Uploads folder serve karne ke liye
+// Uploads folder
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 if (!Directory.Exists(uploadsPath))
-{
     Directory.CreateDirectory(uploadsPath);
-}
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
@@ -161,6 +142,71 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Angular Admin Panel routing
+app.MapGet("/admin/{**path}", async context =>
+{
+    var requestPath = context.Request.Path.Value ?? "";
+    var adminPath = Path.Combine(app.Environment.WebRootPath, "admin");
+
+    // File physically exist karti hai to directly serve karo
+    var physicalPath = Path.Combine(app.Environment.WebRootPath,
+        requestPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+    if (System.IO.File.Exists(physicalPath))
+    {
+        var ext = Path.GetExtension(physicalPath);
+        context.Response.ContentType = ext switch
+        {
+            ".js" => "application/javascript",
+            ".css" => "text/css",
+            ".ico" => "image/x-icon",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            _ => "application/octet-stream"
+        };
+        await context.Response.SendFileAsync(physicalPath);
+        return;
+    }
+
+    // Angular route hai to index.html serve karo
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(
+        Path.Combine(adminPath, "index.html"));
+});
+
+
+
+// Angular Website routing
+app.MapGet("/website/{**path}", async context =>
+{
+    var requestPath = context.Request.Path.Value ?? "";
+    var websitePath = Path.Combine(app.Environment.WebRootPath, "website");
+
+    var physicalPath = Path.Combine(app.Environment.WebRootPath,
+        requestPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+    if (System.IO.File.Exists(physicalPath))
+    {
+        var ext = Path.GetExtension(physicalPath);
+        context.Response.ContentType = ext switch
+        {
+            ".js" => "application/javascript",
+            ".css" => "text/css",
+            ".ico" => "image/x-icon",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            _ => "application/octet-stream"
+        };
+        await context.Response.SendFileAsync(physicalPath);
+        return;
+    }
+
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(
+        Path.Combine(websitePath, "index.html"));
+});
+
 
 app.MapControllers();
 

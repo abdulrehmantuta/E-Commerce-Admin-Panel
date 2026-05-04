@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
 using ECommerceAdminPanel.DTOs.Request;
 using ECommerceAdminPanel.DTOs.Response;
 using ECommerceAdminPanel.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerceAdminPanel.Controllers;
 
@@ -133,6 +134,15 @@ public class TenantController : ControllerBase
     {
         _logger.LogInformation("Deleting tenant with ID: {TenantId}", id);
         var result = await _service.DeleteTenantAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("resolve")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<TenantResponseDto>>> ResolveTenant([FromQuery] string domain)
+    {
+        _logger.LogInformation("Resolving tenant for domain: {Domain}", domain);
+        var result = await _service.GetTenantByDomainAsync(domain);
         return StatusCode(result.StatusCode, result);
     }
 }

@@ -772,6 +772,24 @@ public class TenantService : ITenantService
             return ApiResponse<bool>.ErrorResponse($"Error deleting tenant: {ex.Message}", 500);
         }
     }
+
+    //new
+    public async Task<ApiResponse<TenantResponseDto>> GetTenantByDomainAsync(string domain)
+    {
+        try
+        {
+            var tenant = await _repository.GetByDomainAsync(domain);
+            if (tenant == null)
+                return ApiResponse<TenantResponseDto>.ErrorResponse("Tenant not found", 404);
+
+            var response = _mapper.Map<TenantResponseDto>(tenant);
+            return ApiResponse<TenantResponseDto>.SuccessResponse(response, "Tenant resolved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<TenantResponseDto>.ErrorResponse($"Error resolving tenant: {ex.Message}", 500);
+        }
+    }
 }
 
 
