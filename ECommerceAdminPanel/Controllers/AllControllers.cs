@@ -502,6 +502,45 @@ public class CustomerController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+
+    //new
+
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<CustomerLoginResponseDto>>> Register(
+    [FromBody] CustomerRegisterDto request)
+    {
+        _logger.LogInformation("Customer register attempt: {Email}", request.Email);
+        var result = await _service.RegisterAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<CustomerLoginResponseDto>>> Login(
+        [FromBody] CustomerLoginDto request)
+    {
+        _logger.LogInformation("Customer login attempt: {Email}", request.Email);
+        var result = await _service.LoginAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("my-orders")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<List<OrderResponseDto>>>> GetMyOrders()
+    {
+        var customerIdClaim = User.FindFirst("CustomerId")?.Value;
+        var tenantIdClaim = User.FindFirst("TenantId")?.Value;
+
+        if (string.IsNullOrEmpty(customerIdClaim) || string.IsNullOrEmpty(tenantIdClaim))
+            return Unauthorized("Invalid token");
+
+        var customerId = int.Parse(customerIdClaim);
+        var tenantId = int.Parse(tenantIdClaim);
+
+        var result = await _service.GetMyOrdersAsync(customerId, tenantId);
+        return StatusCode(result.StatusCode, result);
+    }
     [HttpGet("{id}")]
     public async Task<ActionResult<ApiResponse<CustomerResponseDto>>> GetCustomerById(int id)
     {

@@ -38,6 +38,9 @@ public interface ICategoryRepository : IBaseRepository<Category>
 public interface IOrderRepository : IBaseRepository<Order>
 {
     Task<List<Order>> GetByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10);
+
+    Task<List<Order>> GetByUserAsync(int tenantId, int customerId); // ✅ add karo
+
 }
 
 /// <summary>

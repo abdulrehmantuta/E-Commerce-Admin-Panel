@@ -74,6 +74,48 @@ CREATE TABLE Products (
     CONSTRAINT FK_Products_Category FOREIGN KEY (CategoryId) REFERENCES Categories(CategoryId) ON DELETE SET NULL
 );
 
+
+
+-- new
+
+-- =============================================
+-- CUSTOMERS TABLE
+-- =============================================
+IF OBJECT_ID('dbo.Customers', 'U') IS NOT NULL
+    DROP TABLE dbo.Customers;
+
+CREATE TABLE Customers (
+    CustomerId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId INT NOT NULL,
+    FirstName NVARCHAR(100) NOT NULL,
+    LastName NVARCHAR(100) NOT NULL,
+    Email NVARCHAR(150) NULL,
+    Password NVARCHAR(255) NOT NULL,
+    Status BIT DEFAULT 1,
+    CreatedDate DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Customers_Tenant 
+        FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE
+);
+
+-- -- =============================================
+-- -- ORDERS TABLE
+-- -- =============================================
+-- IF OBJECT_ID('dbo.Orders', 'U') IS NOT NULL
+--     DROP TABLE dbo.Orders;
+
+-- CREATE TABLE Orders (
+--     OrderId INT IDENTITY(1,1) PRIMARY KEY,
+--     TenantId INT NOT NULL,
+--     CustomerName NVARCHAR(100) NOT NULL,
+--     CustomerEmail NVARCHAR(150) NULL,
+--     CustomerPhone NVARCHAR(50) NULL,
+--     TotalAmount DECIMAL(18,2) NOT NULL,
+--     Status NVARCHAR(50) DEFAULT 'Pending',
+--     CreatedDate DATETIME DEFAULT GETDATE(),
+--     CONSTRAINT FK_Orders_Tenant FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE
+-- );
+
+
 -- =============================================
 -- ORDERS TABLE
 -- =============================================
@@ -83,13 +125,17 @@ IF OBJECT_ID('dbo.Orders', 'U') IS NOT NULL
 CREATE TABLE Orders (
     OrderId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId INT NOT NULL,
+    UserId INT NULL,
     CustomerName NVARCHAR(100) NOT NULL,
     CustomerEmail NVARCHAR(150) NULL,
     CustomerPhone NVARCHAR(50) NULL,
     TotalAmount DECIMAL(18,2) NOT NULL,
     Status NVARCHAR(50) DEFAULT 'Pending',
     CreatedDate DATETIME DEFAULT GETDATE(),
-    CONSTRAINT FK_Orders_Tenant FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE
+    CONSTRAINT FK_Orders_Tenant 
+        FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE,
+    CONSTRAINT FK_Orders_Customer 
+        FOREIGN KEY (UserId) REFERENCES Customers(CustomerId)
 );
 
 -- =============================================

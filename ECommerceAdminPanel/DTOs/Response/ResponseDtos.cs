@@ -188,3 +188,17 @@ public class CustomerResponseDto
     public bool Status { get; set; }
     public DateTime CreatedDate { get; set; }
 }
+
+
+
+
+
+public class CustomerLoginResponseDto
+{
+    public int CustomerId { get; set; }
+    public int TenantId { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+}

@@ -6,6 +6,10 @@ using ECommerceAdminPanel.DTOs.Response;
 using ECommerceAdminPanel.Models;
 using ECommerceAdminPanel.Repositories.IRepository;
 using ECommerceAdminPanel.Services.IServices;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 /// <summary>
 /// Product Service Implementation
@@ -1263,15 +1267,228 @@ public class SectionDataService : ISectionDataService
 
 
 
+//public class CustomerService : ICustomerService
+//{
+//    private readonly ICustomerRepository _repository;
+//    private readonly IMapper _mapper;
+
+//    public CustomerService(ICustomerRepository repository, IMapper mapper)
+//    {
+//        _repository = repository;
+//        _mapper = mapper;
+//    }
+
+//    public async Task<ApiResponse<CustomerResponseDto>> CreateCustomerAsync(CustomerCreateDto request)
+//    {
+//        try
+//        {
+//            var customer = _mapper.Map<Customer>(request);
+//            customer.Status = true;
+
+//            var id = await _repository.CreateAsync(customer);
+//            if (id <= 0)
+//                return ApiResponse<CustomerResponseDto>.ErrorResponse("Failed to create customer", 400);
+
+//            var created = await _repository.GetByIdAsync(id);
+//            var response = _mapper.Map<CustomerResponseDto>(created);
+
+//            return ApiResponse<CustomerResponseDto>.SuccessResponse(response, "Customer created successfully", 201);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<CustomerResponseDto>.ErrorResponse($"Error creating customer: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<CustomerResponseDto>> GetCustomerByIdAsync(int customerId)
+//    {
+//        try
+//        {
+//            var customer = await _repository.GetByIdAsync(customerId);
+//            if (customer == null)
+//                return ApiResponse<CustomerResponseDto>.ErrorResponse("Customer not found", 404);
+
+//            var response = _mapper.Map<CustomerResponseDto>(customer);
+//            return ApiResponse<CustomerResponseDto>.SuccessResponse(response, "Customer retrieved successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<CustomerResponseDto>.ErrorResponse($"Error retrieving customer: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<PaginatedResponse<CustomerResponseDto>>> GetCustomersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+//    {
+//        try
+//        {
+//            var customers = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+
+//            var response = new PaginatedResponse<CustomerResponseDto>
+//            {
+//                Items = _mapper.Map<List<CustomerResponseDto>>(customers),
+//                PageNumber = pageNumber,
+//                PageSize = pageSize,
+//                TotalCount = customers.Count
+//            };
+
+//            return ApiResponse<PaginatedResponse<CustomerResponseDto>>.SuccessResponse(response, "Customers retrieved successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<PaginatedResponse<CustomerResponseDto>>.ErrorResponse($"Error retrieving customers: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> UpdateCustomerAsync(int customerId, CustomerUpdateDto request)
+//    {
+//        try
+//        {
+//            var existing = await _repository.GetByIdAsync(customerId);
+//            if (existing == null)
+//                return ApiResponse<bool>.ErrorResponse("Customer not found", 404);
+
+//            _mapper.Map(request, existing);
+
+//            var result = await _repository.UpdateAsync(customerId, existing);
+//            if (result <= 0)
+//                return ApiResponse<bool>.ErrorResponse("Failed to update customer", 400);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Customer updated successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error updating customer: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> DeleteCustomerAsync(int customerId)
+//    {
+//        try
+//        {
+//            var existing = await _repository.GetByIdAsync(customerId);
+//            if (existing == null)
+//                return ApiResponse<bool>.ErrorResponse("Customer not found", 404);
+
+//            var result = await _repository.DeleteAsync(customerId);
+//            if (result <= 0)
+//                return ApiResponse<bool>.ErrorResponse("Failed to delete customer", 400);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Customer deleted successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error deleting customer: {ex.Message}", 500);
+//        }
+//    }
+
+
+
+
+//    // Program.cs mein ye already hoga, confirm karo:
+//    // using BCrypt.Net; -- NuGet: BCrypt.Net-Next
+
+//    public async Task<ApiResponse<CustomerLoginResponseDto>> RegisterAsync(CustomerRegisterDto request)
+//    {
+//        try
+//        {
+//            // Email already exist karta hai?
+//            var existing = await _repository.GetByEmailAsync(request.Email, request.TenantId);
+//            if (existing != null)
+//                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Email already registered", 400);
+
+//            var customer = new Customer
+//            {
+//                TenantId = request.TenantId,
+//                FirstName = request.FirstName,
+//                LastName = request.LastName,
+//                Email = request.Email,
+//                Password = BCrypt.Net.BCrypt.HashPassword(request.Password), // hash karo
+//                Status = true,
+//                CreatedDate = DateTime.Now
+//            };
+
+//            var id = await _repository.CreateAsync(customer);
+//            if (id <= 0)
+//                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Registration failed", 400);
+
+//            var created = await _repository.GetByIdAsync(id);
+//            var token = _jwtHelper.GenerateCustomerToken(created!);
+
+//            var response = new CustomerLoginResponseDto
+//            {
+//                CustomerId = created!.CustomerId,
+//                TenantId = created.TenantId,
+//                FirstName = created.FirstName,
+//                LastName = created.LastName,
+//                Email = created.Email ?? "",
+//                Token = token
+//            };
+
+//            return ApiResponse<CustomerLoginResponseDto>.SuccessResponse(response, "Registered successfully", 201);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<CustomerLoginResponseDto>.ErrorResponse($"Error: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<CustomerLoginResponseDto>> LoginAsync(CustomerLoginDto request)
+//    {
+//        try
+//        {
+//            var customer = await _repository.GetByEmailAsync(request.Email, request.TenantId);
+//            if (customer == null)
+//                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Invalid email or password", 401);
+
+//            if (!BCrypt.Net.BCrypt.Verify(request.Password, customer.Password))
+//                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Invalid email or password", 401);
+
+//            if (!customer.Status)
+//                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Account is inactive", 403);
+
+//            var token = _jwtHelper.GenerateCustomerToken(customer);
+
+//            var response = new CustomerLoginResponseDto
+//            {
+//                CustomerId = customer.CustomerId,
+//                TenantId = customer.TenantId,
+//                FirstName = customer.FirstName,
+//                LastName = customer.LastName,
+//                Email = customer.Email ?? "",
+//                Token = token
+//            };
+
+//            return ApiResponse<CustomerLoginResponseDto>.SuccessResponse(response, "Login successful");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<CustomerLoginResponseDto>.ErrorResponse($"Error: {ex.Message}", 500);
+//        }
+//    }
+//}
+
+
+
+
+
+
 public class CustomerService : ICustomerService
 {
     private readonly ICustomerRepository _repository;
+    private readonly IOrderRepository _orderRepository; // ✅ add
     private readonly IMapper _mapper;
+    private readonly IConfiguration _configuration; // ✅ correctly declared
 
-    public CustomerService(ICustomerRepository repository, IMapper mapper)
+    public CustomerService(
+        ICustomerRepository repository,
+        IOrderRepository orderRepository,        // ✅ add
+        IMapper mapper,
+        IConfiguration configuration) // ✅ correctly injected
     {
         _repository = repository;
+        _orderRepository = orderRepository;      // ✅ add
         _mapper = mapper;
+        _configuration = configuration; // ✅ correctly assigned
     }
 
     public async Task<ApiResponse<CustomerResponseDto>> CreateCustomerAsync(CustomerCreateDto request)
@@ -1313,6 +1530,22 @@ public class CustomerService : ICustomerService
         }
     }
 
+
+    //new
+
+    public async Task<ApiResponse<List<OrderResponseDto>>> GetMyOrdersAsync(int customerId, int tenantId)
+    {
+        try
+        {
+            var orders = await _orderRepository.GetByUserAsync(tenantId, customerId);
+            var response = _mapper.Map<List<OrderResponseDto>>(orders);
+            return ApiResponse<List<OrderResponseDto>>.SuccessResponse(response, "Orders retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<OrderResponseDto>>.ErrorResponse($"Error: {ex.Message}", 500);
+        }
+    }
     public async Task<ApiResponse<PaginatedResponse<CustomerResponseDto>>> GetCustomersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
     {
         try
@@ -1376,5 +1609,110 @@ public class CustomerService : ICustomerService
             return ApiResponse<bool>.ErrorResponse($"Error deleting customer: {ex.Message}", 500);
         }
     }
-}
 
+    public async Task<ApiResponse<CustomerLoginResponseDto>> RegisterAsync(CustomerRegisterDto request)
+    {
+        try
+        {
+            var existing = await _repository.GetByEmailAsync(request.Email, request.TenantId);
+            if (existing != null)
+                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Email already registered", 400);
+
+            var customer = new Customer
+            {
+                TenantId = request.TenantId,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Status = true,
+                CreatedDate = DateTime.Now
+            };
+
+            var id = await _repository.CreateAsync(customer);
+            if (id <= 0)
+                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Registration failed", 400);
+
+            var created = await _repository.GetByIdAsync(id);
+            var token = GenerateCustomerToken(created!); // ✅ _jwtHelper nahi, private method
+
+            var response = new CustomerLoginResponseDto
+            {
+                CustomerId = created!.CustomerId,
+                TenantId = created.TenantId,
+                FirstName = created.FirstName,
+                LastName = created.LastName,
+                Email = created.Email ?? "",
+                Token = token
+            };
+
+            return ApiResponse<CustomerLoginResponseDto>.SuccessResponse(response, "Registered successfully", 201);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<CustomerLoginResponseDto>.ErrorResponse($"Error: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<CustomerLoginResponseDto>> LoginAsync(CustomerLoginDto request)
+    {
+        try
+        {
+            var customer = await _repository.GetByEmailAsync(request.Email, request.TenantId);
+            if (customer == null)
+                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Invalid email or password", 401);
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, customer.Password))
+                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Invalid email or password", 401);
+
+            if (!customer.Status)
+                return ApiResponse<CustomerLoginResponseDto>.ErrorResponse("Account is inactive", 403);
+
+            var token = GenerateCustomerToken(customer); // ✅ private method call
+
+            var response = new CustomerLoginResponseDto
+            {
+                CustomerId = customer.CustomerId,
+                TenantId = customer.TenantId,
+                FirstName = customer.FirstName,
+                LastName = customer.LastName,
+                Email = customer.Email ?? "",
+                Token = token
+            };
+
+            return ApiResponse<CustomerLoginResponseDto>.SuccessResponse(response, "Login successful");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<CustomerLoginResponseDto>.ErrorResponse($"Error: {ex.Message}", 500);
+        }
+    }
+
+    // ✅ Private JWT token generator — _jwtHelper ki zaroorat nahi
+    private string GenerateCustomerToken(Customer customer)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim("CustomerId", customer.CustomerId.ToString()),
+            new Claim("TenantId", customer.TenantId.ToString()),
+            new Claim(ClaimTypes.Email, customer.Email ?? ""),
+            new Claim(ClaimTypes.GivenName, customer.FirstName),
+            new Claim("Role", "Customer")
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddDays(7),
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}

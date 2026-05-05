@@ -317,6 +317,16 @@ public class OrderRepository : IOrderRepository
         return await _dapperHelper.QuerySingleOrDefaultAsync<Order>("sp_Order_GetById", parameters);
     }
 
+    //new
+
+    public async Task<List<Order>> GetByUserAsync(int tenantId, int customerId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        parameters.Add("@UserId", customerId);
+        return await _dapperHelper.QueryAsync<Order>("sp_Order_GetByUser", parameters);
+    }
+
     public async Task<List<Order>> GetAllAsync(int pageNumber = 1, int pageSize = 10)
     {
         var parameters = new DynamicParameters();

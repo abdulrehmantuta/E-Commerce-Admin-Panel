@@ -15,6 +15,7 @@ public interface IBaseService<T> where T : class
 /// <summary>
 /// Product Service Interface
 /// </summary>
+/// 
 public interface IProductService
 {
     Task<ApiResponse<ProductResponseDto>> CreateProductAsync(ProductCreateRequestDto request);
@@ -125,6 +126,11 @@ public interface ICustomerService
 {
     Task<ApiResponse<CustomerResponseDto>> CreateCustomerAsync(CustomerCreateDto request);
     Task<ApiResponse<CustomerResponseDto>> GetCustomerByIdAsync(int customerId);
+    //new
+    Task<ApiResponse<CustomerLoginResponseDto>> RegisterAsync(CustomerRegisterDto request);
+    Task<ApiResponse<CustomerLoginResponseDto>> LoginAsync(CustomerLoginDto request);
+    Task<ApiResponse<List<OrderResponseDto>>> GetMyOrdersAsync(int customerId, int tenantId);
+
     Task<ApiResponse<PaginatedResponse<CustomerResponseDto>>> GetCustomersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10);
     Task<ApiResponse<bool>> UpdateCustomerAsync(int customerId, CustomerUpdateDto request);
     Task<ApiResponse<bool>> DeleteCustomerAsync(int customerId);

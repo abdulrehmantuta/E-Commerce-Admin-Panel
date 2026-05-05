@@ -41,6 +41,16 @@ namespace ECommerceAdminPanel.Repositories.Repository
             return await _db.QueryFirstOrDefaultAsync<Customer>(sql, new { id });
         }
 
+        //new
+
+        public async Task<Customer?> GetByEmailAsync(string email, int tenantId)
+        {
+            var sql = @"SELECT * FROM Customers 
+                WHERE Email = @Email 
+                AND TenantId = @TenantId";
+            return await _db.QueryFirstOrDefaultAsync<Customer>(sql, new { Email = email, TenantId = tenantId });
+        }
+
         public async Task<List<Customer>> GetByTenantAsync(int tenantId, int pageNumber, int pageSize)
         {
             var sql = @"SELECT * FROM Customers 

@@ -659,5 +659,118 @@ BEGIN
 END;
 GO
 
+
+-- =============================================
+-- CUSTOMER STORED PROCEDURES
+-- =============================================
+
+-- Customers Table (if not exists)
+IF OBJECT_ID('dbo.Customers', 'U') IS NULL
+BEGIN
+    CREATE TABLE Customers (
+        CustomerId INT IDENTITY(1,1) PRIMARY KEY,
+        TenantId INT NOT NULL,
+        FirstName NVARCHAR(100) NOT NULL,
+        LastName NVARCHAR(100) NOT NULL,
+        Email NVARCHAR(150) NULL,
+        Password NVARCHAR(255) NOT NULL,
+        Status BIT DEFAULT 1,
+        CreatedDate DATETIME DEFAULT GETDATE(),
+        CONSTRAINT FK_Customers_Tenant 
+            FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE
+    );
+    PRINT 'Customers table created';
+END
+ELSE
+    PRINT 'Customers table already exists';
+GO
+
+-- Orders mein UserId
+IF NOT EXISTS (
+    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_NAME = 'Orders' AND COLUMN_NAME = 'UserId'
+)
+BEGIN
+    ALTER TABLE Orders ADD UserId INT NULL;
+    ALTER TABLE Orders ADD CONSTRAINT FK_Orders_Customer
+        FOREIGN KEY (UserId) REFERENCES Customers(CustomerId);
+    PRINT 'UserId added to Orders';
+END
+ELSE
+    PRINT 'UserId already exists';
+GO
+
+CREATE OR ALTER PROCEDURE sp_Customer_Create
+    @TenantId INT,
+    @FirstName NVARCHAR(100),
+    @LastName NVARCHAR(100),
+    @Email NVARCHAR(150) = NULL,
+    @Password NVARCHAR(255),
+    @Status BIT = 1
+AS
+BEGIN
+    INSERT INTO Customers 
+    (TenantId, FirstName, LastName, Email, Password, Status, CreatedDate)
+    VALUES 
+    (@TenantId, @FirstName, @LastName, @Email, @Password, @Status, GETDATE());
+    SELECT SCOPE_IDENTITY() AS CustomerId;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE sp_Customer_GetById
+    @CustomerId INT
+AS
+BEGIN
+    SELECT * FROM Customers WHERE CustomerId = @CustomerId;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE sp_Customer_GetByTenant
+    @TenantId INT,
+    @PageNumber INT = 1,
+    @PageSize INT = 10
+AS
+BEGIN
+    SELECT * FROM Customers
+    WHERE TenantId = @TenantId
+    ORDER BY CreatedDate DESC
+    OFFSET (@PageNumber - 1) * @PageSize ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE sp_Order_GetByUser
+    @TenantId INT,
+    @UserId INT
+AS
+BEGIN
+    SELECT OrderId, TenantId, CustomerName, CustomerEmail,
+           CustomerPhone, TotalAmount, Status, CreatedDate
+    FROM Orders
+    WHERE TenantId = @TenantId AND UserId = @UserId
+    ORDER BY CreatedDate DESC;
+END;
+GO
+
+-- sp_Order_Create updated with UserId
+CREATE OR ALTER PROCEDURE sp_Order_Create
+    @TenantId INT,
+    @UserId INT = NULL,
+    @CustomerName NVARCHAR(100),
+    @CustomerEmail NVARCHAR(150) = NULL,
+    @CustomerPhone NVARCHAR(50) = NULL,
+    @TotalAmount DECIMAL(18,2),
+    @Status NVARCHAR(50) = 'Pending'
+AS
+BEGIN
+    INSERT INTO Orders 
+    (TenantId, UserId, CustomerName, CustomerEmail, CustomerPhone, TotalAmount, Status, CreatedDate)
+    VALUES 
+    (@TenantId, @UserId, @CustomerName, @CustomerEmail, @CustomerPhone, @TotalAmount, @Status, GETDATE());
+    SELECT SCOPE_IDENTITY() AS OrderId;
+END;
+GO
+
+
 PRINT 'All stored procedures created successfully!';
 GO
