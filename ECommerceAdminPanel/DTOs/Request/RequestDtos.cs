@@ -82,6 +82,8 @@ public class ProductUpdateRequestDto
 public class OrderCreateRequestDto
 {
     public int TenantId { get; set; }
+    public int? UserId { get; set; }  // ✅ add karo
+
     public string CustomerName { get; set; } = string.Empty;
     public string? CustomerEmail { get; set; }
     public string? CustomerPhone { get; set; }

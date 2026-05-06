@@ -300,6 +300,7 @@ public class OrderRepository : IOrderRepository
     {
         var parameters = new DynamicParameters();
         parameters.Add("@TenantId", entity.TenantId);
+        parameters.Add("@UserId", entity.UserId);      // ✅ add karo
         parameters.Add("@CustomerName", entity.CustomerName);
         parameters.Add("@CustomerEmail", entity.CustomerEmail);
         parameters.Add("@CustomerPhone", entity.CustomerPhone);

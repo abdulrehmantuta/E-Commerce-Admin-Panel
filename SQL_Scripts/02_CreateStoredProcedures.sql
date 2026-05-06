@@ -772,5 +772,270 @@ END;
 GO
 
 
+
+
+
+
+
+
+
+
+-- =============================================
+-- STEP 1: TENANT SETTINGS TABLE
+-- =============================================
+IF OBJECT_ID('dbo.TenantSettings', 'U') IS NOT NULL
+    DROP TABLE dbo.TenantSettings;
+
+CREATE TABLE TenantSettings (
+    SettingId         INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId          INT NOT NULL UNIQUE,
+
+    -- Branding
+    StoreName         NVARCHAR(200)  NULL,
+    LogoUrl           NVARCHAR(500)  NULL,
+    FaviconUrl        NVARCHAR(500)  NULL,
+
+    -- Colors
+    PrimaryColor      NVARCHAR(20)   DEFAULT '#ea6c2d',
+    SecondaryColor    NVARCHAR(20)   DEFAULT '#1a1a2e',
+    AccentColor       NVARCHAR(20)   DEFAULT '#ffffff',
+    BackgroundColor   NVARCHAR(20)   DEFAULT '#ffffff',
+    TextColor         NVARCHAR(20)   DEFAULT '#1a1a1a',
+    NavbarBgColor     NVARCHAR(20)   DEFAULT '#ffffff',
+    NavbarTextColor   NVARCHAR(20)   DEFAULT '#1a1a1a',
+    FooterBgColor     NVARCHAR(20)   DEFAULT '#0f172a',
+    FooterTextColor   NVARCHAR(20)   DEFAULT '#ffffff',
+    ButtonColor       NVARCHAR(20)   DEFAULT '#ea6c2d',
+    ButtonTextColor   NVARCHAR(20)   DEFAULT '#ffffff',
+
+    -- Typography
+    FontFamily        NVARCHAR(100)  DEFAULT 'Poppins',
+
+    -- Social Links
+    FacebookUrl       NVARCHAR(300)  NULL,
+    InstagramUrl      NVARCHAR(300)  NULL,
+    WhatsappNumber    NVARCHAR(50)   NULL,
+
+    -- Footer
+    FooterTagline     NVARCHAR(500)  NULL,
+
+    UpdatedDate       DATETIME       DEFAULT GETDATE(),
+
+    CONSTRAINT FK_TenantSettings_Tenant
+        FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE
+);
+
+PRINT 'TenantSettings table created!';
+GO
+
+-- =============================================
+-- STEP 2: TENANT SLIDERS TABLE
+-- =============================================
+IF OBJECT_ID('dbo.TenantSliders', 'U') IS NOT NULL
+    DROP TABLE dbo.TenantSliders;
+
+CREATE TABLE TenantSliders (
+    SliderId      INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId      INT NOT NULL,
+
+    -- Slide Content
+    ImageUrl      NVARCHAR(500)  NOT NULL,
+    Title         NVARCHAR(200)  NULL,
+    Subtitle      NVARCHAR(500)  NULL,
+    ButtonText    NVARCHAR(100)  NULL,
+    ButtonLink    NVARCHAR(300)  NULL,
+
+    -- Control
+    OrderNo       INT            DEFAULT 1,
+    IsActive      BIT            DEFAULT 1,
+    CreatedDate   DATETIME       DEFAULT GETDATE(),
+
+    CONSTRAINT FK_TenantSliders_Tenant
+        FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId) ON DELETE CASCADE
+);
+
+CREATE INDEX IX_TenantSliders_TenantId ON TenantSliders(TenantId);
+
+PRINT 'TenantSliders table created!';
+GO
+
+-- =============================================
+-- STEP 3: STORED PROCEDURES — TenantSettings
+-- =============================================
+
+-- GET Settings by TenantId
+CREATE OR ALTER PROCEDURE sp_TenantSettings_Get
+    @TenantId INT
+AS
+BEGIN
+    SELECT * FROM TenantSettings
+    WHERE TenantId = @TenantId;
+END;
+GO
+
+-- UPSERT Settings (Insert if not exists, Update if exists)
+CREATE OR ALTER PROCEDURE sp_TenantSettings_Upsert
+    @TenantId         INT,
+    @StoreName        NVARCHAR(200)  = NULL,
+    @LogoUrl          NVARCHAR(500)  = NULL,
+    @FaviconUrl       NVARCHAR(500)  = NULL,
+    @PrimaryColor     NVARCHAR(20)   = '#ea6c2d',
+    @SecondaryColor   NVARCHAR(20)   = '#1a1a2e',
+    @AccentColor      NVARCHAR(20)   = '#ffffff',
+    @BackgroundColor  NVARCHAR(20)   = '#ffffff',
+    @TextColor        NVARCHAR(20)   = '#1a1a1a',
+    @NavbarBgColor    NVARCHAR(20)   = '#ffffff',
+    @NavbarTextColor  NVARCHAR(20)   = '#1a1a1a',
+    @FooterBgColor    NVARCHAR(20)   = '#0f172a',
+    @FooterTextColor  NVARCHAR(20)   = '#ffffff',
+    @ButtonColor      NVARCHAR(20)   = '#ea6c2d',
+    @ButtonTextColor  NVARCHAR(20)   = '#ffffff',
+    @FontFamily       NVARCHAR(100)  = 'Poppins',
+    @FacebookUrl      NVARCHAR(300)  = NULL,
+    @InstagramUrl     NVARCHAR(300)  = NULL,
+    @WhatsappNumber   NVARCHAR(50)   = NULL,
+    @FooterTagline    NVARCHAR(500)  = NULL
+AS
+BEGIN
+    IF EXISTS (SELECT 1 FROM TenantSettings WHERE TenantId = @TenantId)
+    BEGIN
+        UPDATE TenantSettings SET
+            StoreName        = @StoreName,
+            LogoUrl          = @LogoUrl,
+            FaviconUrl       = @FaviconUrl,
+            PrimaryColor     = @PrimaryColor,
+            SecondaryColor   = @SecondaryColor,
+            AccentColor      = @AccentColor,
+            BackgroundColor  = @BackgroundColor,
+            TextColor        = @TextColor,
+            NavbarBgColor    = @NavbarBgColor,
+            NavbarTextColor  = @NavbarTextColor,
+            FooterBgColor    = @FooterBgColor,
+            FooterTextColor  = @FooterTextColor,
+            ButtonColor      = @ButtonColor,
+            ButtonTextColor  = @ButtonTextColor,
+            FontFamily       = @FontFamily,
+            FacebookUrl      = @FacebookUrl,
+            InstagramUrl     = @InstagramUrl,
+            WhatsappNumber   = @WhatsappNumber,
+            FooterTagline    = @FooterTagline,
+            UpdatedDate      = GETDATE()
+        WHERE TenantId = @TenantId;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO TenantSettings (
+            TenantId, StoreName, LogoUrl, FaviconUrl,
+            PrimaryColor, SecondaryColor, AccentColor,
+            BackgroundColor, TextColor, NavbarBgColor, NavbarTextColor,
+            FooterBgColor, FooterTextColor, ButtonColor, ButtonTextColor,
+            FontFamily, FacebookUrl, InstagramUrl, WhatsappNumber,
+            FooterTagline, UpdatedDate
+        ) VALUES (
+            @TenantId, @StoreName, @LogoUrl, @FaviconUrl,
+            @PrimaryColor, @SecondaryColor, @AccentColor,
+            @BackgroundColor, @TextColor, @NavbarBgColor, @NavbarTextColor,
+            @FooterBgColor, @FooterTextColor, @ButtonColor, @ButtonTextColor,
+            @FontFamily, @FacebookUrl, @InstagramUrl, @WhatsappNumber,
+            @FooterTagline, GETDATE()
+        );
+    END
+
+    SELECT * FROM TenantSettings WHERE TenantId = @TenantId;
+END;
+GO
+
+PRINT 'TenantSettings stored procedures created!';
+GO
+
+-- =============================================
+-- STEP 4: STORED PROCEDURES — TenantSliders
+-- =============================================
+
+-- GET all active sliders for a tenant
+CREATE OR ALTER PROCEDURE sp_TenantSliders_GetByTenant
+    @TenantId INT
+AS
+BEGIN
+    SELECT * FROM TenantSliders
+    WHERE TenantId = @TenantId AND IsActive = 1
+    ORDER BY OrderNo ASC;
+END;
+GO
+
+-- GET all sliders (admin — including inactive)
+CREATE OR ALTER PROCEDURE sp_TenantSliders_GetAll
+    @TenantId INT
+AS
+BEGIN
+    SELECT * FROM TenantSliders
+    WHERE TenantId = @TenantId
+    ORDER BY OrderNo ASC;
+END;
+GO
+
+-- ADD slider
+CREATE OR ALTER PROCEDURE sp_TenantSliders_Add
+    @TenantId     INT,
+    @ImageUrl     NVARCHAR(500),
+    @Title        NVARCHAR(200)  = NULL,
+    @Subtitle     NVARCHAR(500)  = NULL,
+    @ButtonText   NVARCHAR(100)  = NULL,
+    @ButtonLink   NVARCHAR(300)  = NULL,
+    @OrderNo      INT            = 1,
+    @IsActive     BIT            = 1
+AS
+BEGIN
+    INSERT INTO TenantSliders
+        (TenantId, ImageUrl, Title, Subtitle, ButtonText, ButtonLink, OrderNo, IsActive, CreatedDate)
+    VALUES
+        (@TenantId, @ImageUrl, @Title, @Subtitle, @ButtonText, @ButtonLink, @OrderNo, @IsActive, GETDATE());
+
+    SELECT SCOPE_IDENTITY() AS SliderId;
+END;
+GO
+
+-- UPDATE slider
+CREATE OR ALTER PROCEDURE sp_TenantSliders_Update
+    @SliderId     INT,
+    @ImageUrl     NVARCHAR(500),
+    @Title        NVARCHAR(200)  = NULL,
+    @Subtitle     NVARCHAR(500)  = NULL,
+    @ButtonText   NVARCHAR(100)  = NULL,
+    @ButtonLink   NVARCHAR(300)  = NULL,
+    @OrderNo      INT            = 1,
+    @IsActive     BIT            = 1
+AS
+BEGIN
+    UPDATE TenantSliders SET
+        ImageUrl    = @ImageUrl,
+        Title       = @Title,
+        Subtitle    = @Subtitle,
+        ButtonText  = @ButtonText,
+        ButtonLink  = @ButtonLink,
+        OrderNo     = @OrderNo,
+        IsActive    = @IsActive
+    WHERE SliderId = @SliderId;
+
+    SELECT @@ROWCOUNT AS RowsAffected;
+END;
+GO
+
+-- DELETE slider
+CREATE OR ALTER PROCEDURE sp_TenantSliders_Delete
+    @SliderId INT
+AS
+BEGIN
+    DELETE FROM TenantSliders WHERE SliderId = @SliderId;
+    SELECT @@ROWCOUNT AS RowsAffected;
+END;
+GO
+
+
+
+
+
+
+
 PRINT 'All stored procedures created successfully!';
 GO
