@@ -136,3 +136,34 @@ public interface ICustomerService
     Task<ApiResponse<bool>> DeleteCustomerAsync(int customerId);
 }
 
+
+
+
+
+
+
+
+/// <summary>
+/// ITenantSettingsService Interface
+/// </summary>
+
+public interface ITenantSettingsService
+{
+    Task<ApiResponse<TenantSettingsResponseDto>> GetByTenantAsync(int tenantId);
+    Task<ApiResponse<TenantSettingsResponseDto>> UpsertAsync(TenantSettingsRequestDto request);
+}
+
+
+/// <summary>
+/// ITenantSliderService Interface
+/// </summary>
+
+
+public interface ITenantSliderService
+{
+    Task<ApiResponse<List<TenantSliderResponseDto>>> GetActiveAsync(int tenantId);
+    Task<ApiResponse<List<TenantSliderResponseDto>>> GetAllAsync(int tenantId);
+    Task<ApiResponse<int>> AddAsync(TenantSliderRequestDto request);
+    Task<ApiResponse<bool>> UpdateAsync(int sliderId, UpdateSliderRequestDto request);
+    Task<ApiResponse<bool>> DeleteAsync(int sliderId);
+}

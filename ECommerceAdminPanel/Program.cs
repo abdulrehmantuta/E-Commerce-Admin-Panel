@@ -58,6 +58,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddScoped<IDbConnection>(sp => new SqlConnection(connectionString!));
 builder.Services.AddScoped(_ => new DapperHelper(connectionString!));
 
+// Repositories
+
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -68,6 +70,11 @@ builder.Services.AddScoped<IPageRepository, PageRepository>();
 builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ISectionDataRepository, SectionDataRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
+builder.Services.AddScoped<ITenantSliderRepository, TenantSliderRepository>();
+
+
+// Services
 
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -79,6 +86,9 @@ builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISectionDataService, SectionDataService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITenantSettingsService, TenantSettingsService>();
+builder.Services.AddScoped<ITenantSliderService, TenantSliderService>();
+
 
 builder.Services.AddSwaggerGen(c =>
 {

@@ -617,3 +617,146 @@ public class SectionDataRepository : ISectionDataRepository
         return await _dapperHelper.ExecuteAsync("sp_SectionData_Delete", parameters);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+/// <summary>
+/// TenantSettingsRepository Implementation
+/// </summary>
+public class TenantSettingsRepository : ITenantSettingsRepository
+{
+    private readonly DapperHelper _dapperHelper;
+
+    public TenantSettingsRepository(DapperHelper dapperHelper)
+    {
+        _dapperHelper = dapperHelper;
+    }
+
+    public async Task<TenantSettings?> GetByTenantAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QuerySingleOrDefaultAsync<TenantSettings>(
+            "sp_TenantSettings_Get", parameters);
+    }
+
+    public async Task<TenantSettings?> UpsertAsync(TenantSettings entity)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", entity.TenantId);
+        parameters.Add("@StoreName", entity.StoreName);
+        parameters.Add("@LogoUrl", entity.LogoUrl);
+        parameters.Add("@FaviconUrl", entity.FaviconUrl);
+        parameters.Add("@PrimaryColor", entity.PrimaryColor);
+        parameters.Add("@SecondaryColor", entity.SecondaryColor);
+        parameters.Add("@AccentColor", entity.AccentColor);
+        parameters.Add("@BackgroundColor", entity.BackgroundColor);
+        parameters.Add("@TextColor", entity.TextColor);
+        parameters.Add("@NavbarBgColor", entity.NavbarBgColor);
+        parameters.Add("@NavbarTextColor", entity.NavbarTextColor);
+        parameters.Add("@FooterBgColor", entity.FooterBgColor);
+        parameters.Add("@FooterTextColor", entity.FooterTextColor);
+        parameters.Add("@ButtonColor", entity.ButtonColor);
+        parameters.Add("@ButtonTextColor", entity.ButtonTextColor);
+        parameters.Add("@FontFamily", entity.FontFamily);
+        parameters.Add("@FacebookUrl", entity.FacebookUrl);
+        parameters.Add("@InstagramUrl", entity.InstagramUrl);
+        parameters.Add("@WhatsappNumber", entity.WhatsappNumber);
+        parameters.Add("@FooterTagline", entity.FooterTagline);
+        parameters.Add("@HeroBgColor", entity.HeroBgColor); // ✅ naya — baaki sab same raho
+
+        return await _dapperHelper.QuerySingleOrDefaultAsync<TenantSettings>(
+            "sp_TenantSettings_Upsert", parameters);
+    }
+}
+
+
+
+
+/// <summary>
+/// TenantSliderRepository Implementation
+/// </summary>
+/// 
+
+public class TenantSliderRepository : ITenantSliderRepository
+{
+    private readonly DapperHelper _dapperHelper;
+
+    public TenantSliderRepository(DapperHelper dapperHelper)
+    {
+        _dapperHelper = dapperHelper;
+    }
+
+    public async Task<List<TenantSlider>> GetActiveByTenantAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QueryAsync<TenantSlider>(
+            "sp_TenantSliders_GetByTenant", parameters);
+    }
+
+    public async Task<List<TenantSlider>> GetAllByTenantAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QueryAsync<TenantSlider>(
+            "sp_TenantSliders_GetAll", parameters);
+    }
+
+    public async Task<int> AddAsync(TenantSlider entity)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", entity.TenantId);
+        parameters.Add("@ImageUrl", entity.ImageUrl);
+        parameters.Add("@Title", entity.Title);
+        parameters.Add("@Subtitle", entity.Subtitle);
+        parameters.Add("@ButtonText", entity.ButtonText);
+        parameters.Add("@ButtonLink", entity.ButtonLink);
+        parameters.Add("@OrderNo", entity.OrderNo);
+        parameters.Add("@IsActive", entity.IsActive);
+        parameters.Add("@LayoutType", entity.LayoutType);      // NEW
+        parameters.Add("@BgColor", entity.BgColor);         // NEW
+        parameters.Add("@TextColor", entity.TextColor);       // NEW
+        parameters.Add("@OverlayOpacity", entity.OverlayOpacity);  // NEW
+
+
+        var result = await _dapperHelper.ExecuteScalarAsync(
+            "sp_TenantSliders_Add", parameters);
+        return result != null ? Convert.ToInt32(result) : 0;
+    }
+
+    public async Task UpdateAsync(int sliderId, TenantSlider entity)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@SliderId", sliderId);
+        parameters.Add("@ImageUrl", entity.ImageUrl);
+        parameters.Add("@Title", entity.Title);
+        parameters.Add("@Subtitle", entity.Subtitle);
+        parameters.Add("@ButtonText", entity.ButtonText);
+        parameters.Add("@ButtonLink", entity.ButtonLink);
+        parameters.Add("@OrderNo", entity.OrderNo);
+        parameters.Add("@IsActive", entity.IsActive);
+        parameters.Add("@LayoutType", entity.LayoutType);      // NEW
+        parameters.Add("@BgColor", entity.BgColor);         // NEW
+        parameters.Add("@TextColor", entity.TextColor);       // NEW
+        parameters.Add("@OverlayOpacity", entity.OverlayOpacity);  // NEW
+
+
+        await _dapperHelper.ExecuteAsync("sp_TenantSliders_Update", parameters);
+    }
+
+    public async Task DeleteAsync(int sliderId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@SliderId", sliderId);
+        await _dapperHelper.ExecuteAsync("sp_TenantSliders_Delete", parameters);
+    }
+}

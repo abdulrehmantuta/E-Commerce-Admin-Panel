@@ -99,5 +99,28 @@ public interface ISectionDataRepository : IBaseRepository<SectionData>
 
 
 /// <summary>
-/// Customer Repository Interface
+/// ITenantSettingsRepository Interface
 /// </summary>
+
+
+
+public interface ITenantSettingsRepository
+{
+    Task<TenantSettings?> GetByTenantAsync(int tenantId);
+    Task<TenantSettings?> UpsertAsync(TenantSettings entity);
+}
+
+
+
+/// <summary>
+/// ITenantSliderRepository Interface
+/// </summary>
+/// 
+public interface ITenantSliderRepository
+{
+    Task<List<TenantSlider>> GetActiveByTenantAsync(int tenantId);   // storefront
+    Task<List<TenantSlider>> GetAllByTenantAsync(int tenantId);      // admin
+    Task<int> AddAsync(TenantSlider entity);
+    Task UpdateAsync(int sliderId, TenantSlider entity);
+    Task DeleteAsync(int sliderId);
+}

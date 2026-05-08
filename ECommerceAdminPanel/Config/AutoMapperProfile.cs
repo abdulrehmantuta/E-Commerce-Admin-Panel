@@ -57,5 +57,15 @@ public class AutoMapperProfile : Profile
         CreateMap<Customer, CustomerResponseDto>().ReverseMap();
         CreateMap<Customer, CustomerCreateDto>().ReverseMap();
         CreateMap<Customer, CustomerUpdateDto>().ReverseMap();
+
+
+        // TenantSettings mappings
+        CreateMap<TenantSettings, TenantSettingsResponseDto>().ReverseMap();
+        CreateMap<TenantSettingsRequestDto, TenantSettings>();
+
+        // TenantSlider mappings
+        CreateMap<TenantSlider, TenantSliderResponseDto>().ReverseMap();
+        CreateMap<TenantSliderRequestDto, TenantSlider>();
+        CreateMap<UpdateSliderRequestDto, TenantSlider>();
     }
 }
