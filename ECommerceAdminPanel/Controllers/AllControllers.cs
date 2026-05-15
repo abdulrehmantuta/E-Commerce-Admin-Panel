@@ -3,6 +3,7 @@ using ECommerceAdminPanel.DTOs.Response;
 using ECommerceAdminPanel.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace ECommerceAdminPanel.Controllers;
 
@@ -595,5 +596,265 @@ public class CustomerController : ControllerBase
 
         var result = await _service.DeleteCustomerAsync(id);
         return StatusCode(result.StatusCode, result);
+    }
+}
+
+
+
+
+
+
+// =============================================
+// NAYE CONTROLLERS — SIRF YE ADD HUE HAIN
+// =============================================
+
+/// <summary>
+/// Tenant Integration Settings Controller
+/// Admin panel se Email + WhatsApp settings save/get karne ke liye
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class TenantIntegrationsController : ControllerBase
+{
+    private readonly ITenantIntegrationService _service;
+    private readonly ILogger<TenantIntegrationsController> _logger;
+
+    public TenantIntegrationsController(ITenantIntegrationService service, ILogger<TenantIntegrationsController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Tenant ki integration settings fetch karo
+    /// GET api/TenantIntegrations/{tenantId}
+    /// </summary>
+    [HttpGet("{tenantId}")]
+    public async Task<ActionResult<ApiResponse<TenantIntegrationResponseDto>>> GetByTenant(int tenantId)
+    {
+        _logger.LogInformation("Getting integrations for tenant: {TenantId}", tenantId);
+        var result = await _service.GetByTenantAsync(tenantId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    /// <summary>
+    /// Tenant ki integration settings save/update karo (Upsert)
+    /// POST api/TenantIntegrations/save
+    /// </summary>
+    [HttpPost("save")]
+    public async Task<ActionResult<ApiResponse<bool>>> Save([FromBody] TenantIntegrationRequestDto request)
+    {
+        _logger.LogInformation("Saving integrations for tenant: {TenantId}", request.TenantId);
+        var result = await _service.UpsertAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    /// <summary>
+    /// Tenant ki integration settings delete karo
+    /// DELETE api/TenantIntegrations/{tenantId}
+    /// </summary>
+    [HttpDelete("{tenantId}")]
+    public async Task<ActionResult<ApiResponse<bool>>> Delete(int tenantId)
+    {
+        _logger.LogInformation("Deleting integrations for tenant: {TenantId}", tenantId);
+        var result = await _service.DeleteAsync(tenantId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    /// <summary>
+    /// Test Email bhejo (Integration verify karne ke liye)
+    /// POST api/TenantIntegrations/test-email/{tenantId}
+    /// </summary>
+    [HttpPost("test-email/{tenantId}")]
+    public async Task<ActionResult<ApiResponse<bool>>> TestEmail(int tenantId, [FromQuery] string toEmail)
+    {
+        _logger.LogInformation("Testing email for tenant: {TenantId}", tenantId);
+        var result = await _service.TestEmailAsync(tenantId, toEmail);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    /// <summary>
+    /// Test WhatsApp bhejo (Integration verify karne ke liye)
+    /// POST api/TenantIntegrations/test-whatsapp/{tenantId}
+    /// </summary>
+    [HttpPost("test-whatsapp/{tenantId}")]
+    public async Task<ActionResult<ApiResponse<bool>>> TestWhatsApp(int tenantId, [FromQuery] string toPhone)
+    {
+        _logger.LogInformation("Testing WhatsApp for tenant: {TenantId}", tenantId);
+        var result = await _service.TestWhatsAppAsync(tenantId, toPhone);
+        return StatusCode(result.StatusCode, result);
+    }
+}
+
+/// <summary>
+/// Notification Logs Controller
+/// Sent/Failed notifications ki history dekhne ke liye
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class NotificationLogsController : ControllerBase
+{
+    private readonly INotificationLogService _service;
+    private readonly ILogger<NotificationLogsController> _logger;
+
+    public NotificationLogsController(INotificationLogService service, ILogger<NotificationLogsController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Tenant ki saari notification history
+    /// GET api/NotificationLogs/tenant/{tenantId}
+    /// </summary>
+    [HttpGet("tenant/{tenantId}")]
+    public async Task<ActionResult<ApiResponse<List<NotificationLogResponseDto>>>> GetByTenant(
+        int tenantId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        _logger.LogInformation("Getting notification logs for tenant: {TenantId}", tenantId);
+        var result = await _service.GetByTenantAsync(tenantId, page, pageSize);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    /// <summary>
+    /// Specific order ki notifications
+    /// GET api/NotificationLogs/order/{orderId}?tenantId=1
+    /// </summary>
+    [HttpGet("order/{orderId}")]
+    public async Task<ActionResult<ApiResponse<List<NotificationLogResponseDto>>>> GetByOrder(
+        int orderId,
+        [FromQuery] int tenantId)
+    {
+        _logger.LogInformation("Getting notification logs for order: {OrderId}", orderId);
+        var result = await _service.GetByOrderAsync(tenantId, orderId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    /// <summary>
+    /// Sirf failed notifications
+    /// GET api/NotificationLogs/failed/{tenantId}
+    /// </summary>
+    [HttpGet("failed/{tenantId}")]
+    public async Task<ActionResult<ApiResponse<List<NotificationLogResponseDto>>>> GetFailed(int tenantId)
+    {
+        _logger.LogInformation("Getting failed notification logs for tenant: {TenantId}", tenantId);
+        var result = await _service.GetFailedAsync(tenantId);
+        return StatusCode(result.StatusCode, result);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/// <summary>
+//WhatsAppWebhookController
+/// </summary>
+
+
+[ApiController]
+[Route("api/[controller]")]
+public class WhatsAppWebhookController : ControllerBase
+{
+    private readonly IOrderService _service;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<WhatsAppWebhookController> _logger;
+
+    private const string WEBHOOK_VERIFY_TOKEN = "YOUR_VERIFY_TOKEN_HERE";
+
+    public WhatsAppWebhookController(
+        IOrderService service,
+        INotificationService notificationService,
+        ILogger<WhatsAppWebhookController> logger)
+    {
+        _service = service;
+        _notificationService = notificationService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public IActionResult Verify(
+        [FromQuery(Name = "hub.mode")] string? hubMode,
+        [FromQuery(Name = "hub.verify_token")] string? hubVerifyToken,
+        [FromQuery(Name = "hub.challenge")] string? hubChallenge)
+    {
+        if (hubMode == "subscribe" && hubVerifyToken == WEBHOOK_VERIFY_TOKEN)
+            return Ok(hubChallenge);
+
+        return Forbid();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Receive([FromBody] JsonElement body)
+    {
+        try
+        {
+            var entry = body
+                .GetProperty("entry")[0]
+                .GetProperty("changes")[0]
+                .GetProperty("value");
+
+            if (!entry.TryGetProperty("messages", out var messages)) return Ok();
+
+            var message = messages[0];
+            if (message.GetProperty("type").GetString() == "interactive")
+            {
+                var interactive = message.GetProperty("interactive");
+                if (interactive.GetProperty("type").GetString() == "button_reply")
+                {
+                    var buttonId = interactive.GetProperty("button_reply").GetProperty("id").GetString();
+                    var fromPhone = message.GetProperty("from").GetString();
+                    await HandleButtonReply(buttonId!, fromPhone!);
+                }
+            }
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Webhook error");
+            return Ok();
+        }
+    }
+
+    private async Task HandleButtonReply(string buttonId, string fromPhone)
+    {
+        if (buttonId.StartsWith("CONFIRM_ORDER_"))
+        {
+            var orderId = int.Parse(buttonId.Replace("CONFIRM_ORDER_", ""));
+            await ProcessOrderAction(orderId, "Confirmed");
+        }
+        else if (buttonId.StartsWith("CANCEL_ORDER_"))
+        {
+            var orderId = int.Parse(buttonId.Replace("CANCEL_ORDER_", ""));
+            await ProcessOrderAction(orderId, "Cancelled");
+        }
+    }
+
+    private async Task ProcessOrderAction(int orderId, string newStatus)
+    {
+        // ✅ Aapka existing GetOrderById use kar rahe hain
+        var response = await _service.GetOrderByIdAsync(orderId);
+        if (!response.Success || response.Data == null) return;
+
+        var oldStatus = response.Data.Status;
+
+        // ✅ Aapka existing UpdateOrder use kar rahe hain
+        await _service.UpdateOrderAsync(orderId, new OrderUpdateRequestDto
+        {
+            Status = newStatus
+        });
+
+        _logger.LogInformation("✅ Order {OrderId} → {Status}", orderId, newStatus);
     }
 }

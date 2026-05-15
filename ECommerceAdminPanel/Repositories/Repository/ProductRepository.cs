@@ -30,6 +30,10 @@ public class ProductRepository : IProductRepository
         parameters.Add("@ImageUrl", entity.ImageUrl);
         parameters.Add("@CategoryId", entity.CategoryId);
         parameters.Add("@StockQty", entity.StockQty);
+        parameters.Add("@Sizes", entity.Sizes);
+        parameters.Add("@Colors", entity.Colors);
+        parameters.Add("@SKU", entity.SKU);
+        parameters.Add("@Brand", entity.Brand);
 
         var result = await _dapperHelper.ExecuteScalarAsync("sp_Product_Create", parameters);
         return result != null ? Convert.ToInt32(result) : 0;
@@ -98,6 +102,10 @@ public class ProductRepository : IProductRepository
         parameters.Add("@CategoryId", entity.CategoryId);
         parameters.Add("@StockQty", entity.StockQty);
         parameters.Add("@Status", entity.Status);
+        parameters.Add("@Sizes", entity.Sizes);
+        parameters.Add("@Colors", entity.Colors);
+        parameters.Add("@SKU", entity.SKU);
+        parameters.Add("@Brand", entity.Brand);
 
         return await _dapperHelper.ExecuteAsync("sp_Product_Update", parameters);
     }

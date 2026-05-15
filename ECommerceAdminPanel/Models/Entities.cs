@@ -59,6 +59,11 @@ public class Product
     public int StockQty { get; set; }
     public bool Status { get; set; }
     public DateTime CreatedDate { get; set; }
+
+    public string? Sizes { get; set; }
+    public string? Colors { get; set; }
+    public string? SKU { get; set; }
+    public string? Brand { get; set; }
 }
 
 /// <summary>
@@ -180,6 +185,20 @@ public class TenantSettings
     public string HeroBgColor { get; set; } = "#ffffff"; // ✅ naya
 
     public DateTime UpdatedDate { get; set; }
+
+
+    // Existing fields ke baad add karo:
+    public string PromoBannerBg { get; set; } = "#1e1a14";
+    public string PromoBannerText { get; set; } = "#f5ede0";
+    public string CardBg { get; set; } = "#ffffff";
+    public string CardText { get; set; } = "#2a1f14";
+    // ✅ Naye card style fields
+    public string CardStyle { get; set; } = "minimal";
+    public string CardRadius { get; set; } = "12px";
+    public string FontHeading { get; set; } = "Cormorant Garamond";
+    public string FontBody { get; set; } = "Jost";
+    public string ButtonRadius { get; set; } = "8px";
+    public string ImageAspectRatio { get; set; } = "4/5";
 }
 
 
@@ -209,5 +228,91 @@ public class TenantSlider
     public string BgColor { get; set; } = "#1a1a2e";
     public string TextColor { get; set; } = "#ffffff";
     public int OverlayOpacity { get; set; } = 50;
+    public bool IsPresetImage { get; set; } = false;  // ← NEW
 
+
+}
+
+
+
+/// <summary>
+/// TenantIntegration entity - represents customer table in database
+/// </summary>
+
+
+public class TenantIntegration
+    {
+        public int IntegrationId { get; set; }
+        public int TenantId { get; set; }
+
+        // Email
+        public bool IsEmailEnabled { get; set; }
+        public string? EmailProvider { get; set; }       // "SendGrid" / "SMTP"
+        public string? EmailApiKey { get; set; }
+        public string? EmailSenderAddress { get; set; }
+        public string? EmailSenderName { get; set; }
+
+        // WhatsApp
+        public bool IsWhatsAppEnabled { get; set; }
+        public string? WhatsAppProvider { get; set; }    // "Meta" / "Twilio"
+        public string? WhatsAppToken { get; set; }
+        public string? WhatsAppPhoneNumberId { get; set; }
+        public string? WhatsAppBusinessId { get; set; }
+
+        public DateTime UpdatedDate { get; set; }
+    }
+
+
+
+
+// =============================================
+// YE APNI Models.cs FILE MEIN ADD KARO
+// Existing code ke NEECHE paste karo
+// =============================================
+
+/// <summary>
+/// NotificationLog entity - tracks all sent notifications
+/// </summary>
+public class NotificationLog
+{
+    public int LogId { get; set; }
+    public int TenantId { get; set; }
+    public int? OrderId { get; set; }
+    public string Channel { get; set; } = "";       // "Email" / "WhatsApp"
+    public string EventType { get; set; } = "";     // "OrderCreated" etc
+    public string? RecipientContact { get; set; }
+    public string Status { get; set; } = "";        // "Sent" / "Failed"
+    public string? ErrorMessage { get; set; }
+    public DateTime SentAt { get; set; }
+}
+
+/// <summary>
+/// Notification Event Type Constants
+/// </summary>
+public static class NotificationEvents
+{
+    public const string OrderCreated = "OrderCreated";
+    public const string OrderConfirmed = "OrderConfirmed";
+    public const string OrderCancelled = "OrderCancelled";
+    public const string OrderShipped = "OrderShipped";
+    public const string PaymentReceived = "PaymentReceived";
+}
+
+/// <summary>
+/// Notification Channel Constants
+/// </summary>
+public static class NotificationChannels
+{
+    public const string Email = "Email";
+    public const string WhatsApp = "WhatsApp";
+}
+
+/// <summary>
+/// Notification Status Constants
+/// </summary>
+public static class NotificationStatus
+{
+    public const string Sent = "Sent";
+    public const string Failed = "Failed";
+    public const string Pending = "Pending";
 }

@@ -58,6 +58,10 @@ public class ProductResponseDto
     public int StockQty { get; set; }
     public bool Status { get; set; }
     public DateTime CreatedDate { get; set; }
+    public List<string> Sizes { get; set; } = new();
+    public List<string> Colors { get; set; } = new();
+    public string? SKU { get; set; }
+    public string? Brand { get; set; }
 }
 
 /// <summary>
@@ -241,6 +245,19 @@ public class TenantSettingsResponseDto
     public string HeroBgColor { get; set; } = "#ffffff"; // ✅ naya
 
     public DateTime UpdatedDate { get; set; }
+
+
+    public string PromoBannerBg { get; set; } = "#1e1a14";
+    public string PromoBannerText { get; set; } = "#f5ede0";
+    public string CardBg { get; set; } = "#ffffff";
+    public string CardText { get; set; } = "#2a1f14";
+    // ✅ Naye
+    public string CardStyle { get; set; } = "minimal";
+    public string CardRadius { get; set; } = "12px";
+    public string FontHeading { get; set; } = "Cormorant Garamond";
+    public string FontBody { get; set; } = "Jost";
+    public string ButtonRadius { get; set; } = "8px";
+    public string ImageAspectRatio { get; set; } = "4/5";
 }
 
 
@@ -268,5 +285,54 @@ public class TenantSliderResponseDto
     public string BgColor { get; set; } = "#1a1a2e";
     public string TextColor { get; set; } = "#ffffff";
     public int OverlayOpacity { get; set; } = 50;
+    public bool IsPresetImage { get; set; }  // ← YEH ADD KARO
 
+}
+
+
+
+
+// =============================================
+// ✅ NEW — TenantIntegration Response DTOs
+// =============================================
+
+/// <summary>
+/// TenantIntegration Response DTO
+/// </summary>
+public class TenantIntegrationResponseDto
+{
+    public int IntegrationId { get; set; }
+    public int TenantId { get; set; }
+
+    // Email
+    public bool IsEmailEnabled { get; set; }
+    public string? EmailProvider { get; set; }
+    public string? EmailApiKey { get; set; }        // Masked (****) from API
+    public string? EmailSenderAddress { get; set; }
+    public string? EmailSenderName { get; set; }
+
+    // WhatsApp
+    public bool IsWhatsAppEnabled { get; set; }
+    public string? WhatsAppProvider { get; set; }
+    public string? WhatsAppToken { get; set; }      // Masked (****) from API
+    public string? WhatsAppPhoneNumberId { get; set; }
+    public string? WhatsAppBusinessId { get; set; }
+
+    public DateTime UpdatedDate { get; set; }
+}
+
+/// <summary>
+/// NotificationLog Response DTO
+/// </summary>
+public class NotificationLogResponseDto
+{
+    public int LogId { get; set; }
+    public int TenantId { get; set; }
+    public int? OrderId { get; set; }
+    public string Channel { get; set; } = "";       // "Email" / "WhatsApp"
+    public string EventType { get; set; } = "";     // "OrderCreated" etc
+    public string? RecipientContact { get; set; }
+    public string Status { get; set; } = "";        // "Sent" / "Failed"
+    public string? ErrorMessage { get; set; }
+    public DateTime SentAt { get; set; }
 }

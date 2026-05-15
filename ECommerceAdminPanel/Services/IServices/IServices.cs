@@ -163,7 +163,48 @@ public interface ITenantSliderService
 {
     Task<ApiResponse<List<TenantSliderResponseDto>>> GetActiveAsync(int tenantId);
     Task<ApiResponse<List<TenantSliderResponseDto>>> GetAllAsync(int tenantId);
+
+    Task<ApiResponse<List<TenantSliderResponseDto>>> GetPresetImagesAsync(int tenantId); // ← ADD
+
     Task<ApiResponse<int>> AddAsync(TenantSliderRequestDto request);
     Task<ApiResponse<bool>> UpdateAsync(int sliderId, UpdateSliderRequestDto request);
     Task<ApiResponse<bool>> DeleteAsync(int sliderId);
+}
+
+
+
+
+// ✅ NAYE — YE MISSING THE, AB ADD HUE
+// =============================================
+ 
+/// <summary>
+/// ITenantIntegrationService Interface
+/// Admin panel se Email + WhatsApp settings manage karne ke liye
+/// </summary>
+public interface ITenantIntegrationService
+{
+    Task<ApiResponse<TenantIntegrationResponseDto>> GetByTenantAsync(int tenantId);
+    Task<ApiResponse<bool>> UpsertAsync(TenantIntegrationRequestDto request);
+    Task<ApiResponse<bool>> DeleteAsync(int tenantId);
+    Task<ApiResponse<bool>> TestEmailAsync(int tenantId, string toEmail);
+    Task<ApiResponse<bool>> TestWhatsAppAsync(int tenantId, string toPhone);
+}
+
+/// <summary>
+/// INotificationLogService Interface
+/// Notification history fetch karne ke liye
+/// </summary>
+public interface INotificationLogService
+{
+    Task<ApiResponse<List<NotificationLogResponseDto>>> GetByTenantAsync(int tenantId, int page = 1, int pageSize = 20);
+    Task<ApiResponse<List<NotificationLogResponseDto>>> GetByOrderAsync(int tenantId, int orderId);
+    Task<ApiResponse<List<NotificationLogResponseDto>>> GetFailedAsync(int tenantId);
+}
+
+
+
+public interface INotificationService
+{
+    Task SendOrderCreatedAsync(Order order);
+    Task SendOrderStatusUpdatedAsync(Order order, string oldStatus);
 }

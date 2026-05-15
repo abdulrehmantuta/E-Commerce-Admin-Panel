@@ -3,53 +3,32 @@
     using AutoMapper;
     using ECommerceAdminPanel.DTOs.Request;
     using ECommerceAdminPanel.DTOs.Response;
+    using ECommerceAdminPanel.Helper;
     using ECommerceAdminPanel.Models;
     using ECommerceAdminPanel.Repositories.IRepository;
     using ECommerceAdminPanel.Services.IServices;
     using Microsoft.IdentityModel.Tokens;
     using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
     using System.Security.Claims;
     using System.Text;
+using System.Text.Json;
 
-    /// <summary>
-    /// Product Service Implementation
-    /// </summary>
-    public class ProductService : IProductService
+/// <summary>
+/// Product Service Implementation
+/// </summary>
+public class ProductService : IProductService
+{
+    private readonly IProductRepository _repository;
+    private readonly IMapper _mapper;
+
+    public ProductService(IProductRepository repository, IMapper mapper)
     {
-        private readonly IProductRepository _repository;
-        private readonly IMapper _mapper;
+        _repository = repository;
+        _mapper = mapper;
+    }
 
-        public ProductService(IProductRepository repository, IMapper mapper)
-        {
-            _repository = repository;
-            _mapper = mapper;
-        }
-
-        // public async Task<ApiResponse<ProductResponseDto>> CreateProductAsync(ProductCreateRequestDto request)
-        // {
-        //     try
-        //     {
-        //         var product = _mapper.Map<Product>(request);
-        //         product.CreatedDate = DateTime.Now;
-        //         product.Status = true;
-
-        //         var id = await _repository.CreateAsync(product);
-        //         if (id <= 0)
-        //             return ApiResponse<ProductResponseDto>.ErrorResponse("Failed to create product", 400);
-
-        //         // Fetch the created product
-        //         var created = await _repository.GetByIdAsync(id);
-        //         var response = _mapper.Map<ProductResponseDto>(created);
-
-        //         return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product created successfully", 201);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         return ApiResponse<ProductResponseDto>.ErrorResponse($"Error creating product: {ex.Message}", 500);
-        //     }
-        // }
-
-        public async Task<ApiResponse<ProductResponseDto>> CreateProductAsync(ProductCreateRequestDto request)
+    public async Task<ApiResponse<ProductResponseDto>> CreateProductAsync(ProductCreateRequestDto request)
     {
         try
         {
@@ -57,11 +36,9 @@
             product.CreatedDate = DateTime.Now;
             product.Status = true;
 
-            // ✅ IMAGE SAVE LOGIC
             if (request.Image != null)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/uploads/products");
-
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
 
@@ -69,17 +46,22 @@
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
                 using (var stream = new FileStream(filePath, FileMode.Create))
-                {
                     await request.Image.CopyToAsync(stream);
-                }
 
                 product.ImageUrl = "/uploads/products/" + fileName;
             }
 
-            var id = await _repository.CreateAsync(product);
+            product.Sizes = JsonHelper.ToJson(request.Sizes);
+            product.Colors = JsonHelper.ToJson(request.Colors);
+            product.SKU = request.SKU?.Trim();
+            product.Brand = request.Brand?.Trim();
 
+            var id = await _repository.CreateAsync(product);
             var created = await _repository.GetByIdAsync(id);
             var response = _mapper.Map<ProductResponseDto>(created);
+
+            response.Sizes = JsonHelper.ToList(created?.Sizes);
+            response.Colors = JsonHelper.ToList(created?.Colors);
 
             return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product created successfully", 201);
         }
@@ -89,227 +71,133 @@
         }
     }
 
-        public async Task<ApiResponse<ProductResponseDto>> GetProductByIdAsync(int productId)
+    public async Task<ApiResponse<ProductResponseDto>> GetProductByIdAsync(int productId)
+    {
+        try
         {
-            try
-            {
-                var product = await _repository.GetByIdAsync(productId);
-                if (product == null)
-                    return ApiResponse<ProductResponseDto>.ErrorResponse("Product not found", 404);
+            var product = await _repository.GetByIdAsync(productId);
+            if (product == null)
+                return ApiResponse<ProductResponseDto>.ErrorResponse("Product not found", 404);
 
-                var response = _mapper.Map<ProductResponseDto>(product);
-                return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<ProductResponseDto>.ErrorResponse($"Error retrieving product: {ex.Message}", 500);
-            }
+            var response = _mapper.Map<ProductResponseDto>(product);
+            response.Sizes = JsonHelper.ToList(product.Sizes);
+            response.Colors = JsonHelper.ToList(product.Colors);
+
+            return ApiResponse<ProductResponseDto>.SuccessResponse(response, "Product retrieved successfully");
         }
-
-        public async Task<ApiResponse<PaginatedResponse<ProductResponseDto>>> GetProductsByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+        catch (Exception ex)
         {
-            try
-            {
-                var products = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
-                var response = new PaginatedResponse<ProductResponseDto>
-                {
-                    Items = _mapper.Map<List<ProductResponseDto>>(products),
-                    PageNumber = pageNumber,
-                    PageSize = pageSize,
-                    TotalCount = products.Count
-                };
-
-                return ApiResponse<PaginatedResponse<ProductResponseDto>>.SuccessResponse(response, "Products retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<PaginatedResponse<ProductResponseDto>>.ErrorResponse($"Error retrieving products: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<PaginatedResponse<ProductResponseDto>>> GetProductsByCategoryAsync(int categoryId, int pageNumber = 1, int pageSize = 10)
-        {
-            try
-            {
-                var products = await _repository.GetByCategoryAsync(categoryId, pageNumber, pageSize);
-                var response = new PaginatedResponse<ProductResponseDto>
-                {
-                    Items = _mapper.Map<List<ProductResponseDto>>(products),
-                    PageNumber = pageNumber,
-                    PageSize = pageSize,
-                    TotalCount = products.Count
-                };
-
-                return ApiResponse<PaginatedResponse<ProductResponseDto>>.SuccessResponse(response, "Products retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<PaginatedResponse<ProductResponseDto>>.ErrorResponse($"Error retrieving products: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<bool>> UpdateProductAsync(int productId, ProductUpdateRequestDto request)
-        {
-            try
-            {
-                var existing = await _repository.GetByIdAsync(productId);
-                if (existing == null)
-                    return ApiResponse<bool>.ErrorResponse("Product not found", 404);
-
-                _mapper.Map(request, existing);
-                var result = await _repository.UpdateAsync(productId, existing);
-
-                if (result <= 0)
-                    return ApiResponse<bool>.ErrorResponse("Failed to update product", 400);
-
-                return ApiResponse<bool>.SuccessResponse(true, "Product updated successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<bool>.ErrorResponse($"Error updating product: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<bool>> DeleteProductAsync(int productId)
-        {
-            try
-            {
-                var existing = await _repository.GetByIdAsync(productId);
-                if (existing == null)
-                    return ApiResponse<bool>.ErrorResponse("Product not found", 404);
-
-                var result = await _repository.DeleteAsync(productId);
-                if (result <= 0)
-                    return ApiResponse<bool>.ErrorResponse("Failed to delete product", 400);
-
-                return ApiResponse<bool>.SuccessResponse(true, "Product deleted successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<bool>.ErrorResponse($"Error deleting product: {ex.Message}", 500);
-            }
+            return ApiResponse<ProductResponseDto>.ErrorResponse($"Error retrieving product: {ex.Message}", 500);
         }
     }
 
-    /// <summary>
-    /// Category Service Implementation
-    /// </summary>
-    // public class CategoryService : ICategoryService
-    // {
-    //     private readonly ICategoryRepository _repository;
-    //     private readonly IMapper _mapper;
+    public async Task<ApiResponse<PaginatedResponse<ProductResponseDto>>> GetProductsByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+    {
+        try
+        {
+            var products = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+            var items = _mapper.Map<List<ProductResponseDto>>(products);
 
-    //     public CategoryService(ICategoryRepository repository, IMapper mapper)
-    //     {
-    //         _repository = repository;
-    //         _mapper = mapper;
-    //     }
+            for (int i = 0; i < items.Count; i++)
+            {
+                items[i].Sizes = JsonHelper.ToList(products[i].Sizes);
+                items[i].Colors = JsonHelper.ToList(products[i].Colors);
+            }
 
-    //     public async Task<ApiResponse<CategoryResponseDto>> CreateCategoryAsync(CategoryRequestDto request)
-    //     {
-    //         try
-    //         {
-    //             var category = _mapper.Map<Category>(request);
-    //             category.Status = true;
+            var response = new PaginatedResponse<ProductResponseDto>
+            {
+                Items = items,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = products.Count
+            };
 
-    //             var id = await _repository.CreateAsync(category);
-    //             if (id <= 0)
-    //                 return ApiResponse<CategoryResponseDto>.ErrorResponse("Failed to create category", 400);
+            return ApiResponse<PaginatedResponse<ProductResponseDto>>.SuccessResponse(response, "Products retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PaginatedResponse<ProductResponseDto>>.ErrorResponse($"Error retrieving products: {ex.Message}", 500);
+        }
+    }
 
-    //             var created = await _repository.GetByIdAsync(id);
-    //             var response = _mapper.Map<CategoryResponseDto>(created);
+    public async Task<ApiResponse<PaginatedResponse<ProductResponseDto>>> GetProductsByCategoryAsync(int categoryId, int pageNumber = 1, int pageSize = 10)
+    {
+        try
+        {
+            var products = await _repository.GetByCategoryAsync(categoryId, pageNumber, pageSize);
+            var items = _mapper.Map<List<ProductResponseDto>>(products);
 
-    //             return ApiResponse<CategoryResponseDto>.SuccessResponse(response, "Category created successfully", 201);
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             return ApiResponse<CategoryResponseDto>.ErrorResponse($"Error creating category: {ex.Message}", 500);
-    //         }
-    //     }
+            for (int i = 0; i < items.Count; i++)
+            {
+                items[i].Sizes = JsonHelper.ToList(products[i].Sizes);
+                items[i].Colors = JsonHelper.ToList(products[i].Colors);
+            }
 
-    //     public async Task<ApiResponse<CategoryResponseDto>> GetCategoryByIdAsync(int categoryId)
-    //     {
-    //         try
-    //         {
-    //             var category = await _repository.GetByIdAsync(categoryId);
-    //             if (category == null)
-    //                 return ApiResponse<CategoryResponseDto>.ErrorResponse("Category not found", 404);
+            var response = new PaginatedResponse<ProductResponseDto>
+            {
+                Items = items,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = products.Count
+            };
 
-    //             var response = _mapper.Map<CategoryResponseDto>(category);
-    //             return ApiResponse<CategoryResponseDto>.SuccessResponse(response, "Category retrieved successfully");
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             return ApiResponse<CategoryResponseDto>.ErrorResponse($"Error retrieving category: {ex.Message}", 500);
-    //         }
-    //     }
+            return ApiResponse<PaginatedResponse<ProductResponseDto>>.SuccessResponse(response, "Products retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PaginatedResponse<ProductResponseDto>>.ErrorResponse($"Error retrieving products: {ex.Message}", 500);
+        }
+    }
 
-    //     public async Task<ApiResponse<PaginatedResponse<CategoryResponseDto>>> GetCategoriesByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
-    //     {
-    //         try
-    //         {
-    //             var categories = await _repository.GetByTenantAsync(tenantId, pageNumber, pageSize);
-    //             var response = new PaginatedResponse<CategoryResponseDto>
-    //             {
-    //                 Items = _mapper.Map<List<CategoryResponseDto>>(categories),
-    //                 PageNumber = pageNumber,
-    //                 PageSize = pageSize,
-    //                 TotalCount = categories.Count
-    //             };
+    public async Task<ApiResponse<bool>> UpdateProductAsync(int productId, ProductUpdateRequestDto request)
+    {
+        try
+        {
+            var existing = await _repository.GetByIdAsync(productId);
+            if (existing == null)
+                return ApiResponse<bool>.ErrorResponse("Product not found", 404);
 
-    //             return ApiResponse<PaginatedResponse<CategoryResponseDto>>.SuccessResponse(response, "Categories retrieved successfully");
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             return ApiResponse<PaginatedResponse<CategoryResponseDto>>.ErrorResponse($"Error retrieving categories: {ex.Message}", 500);
-    //         }
-    //     }
+            _mapper.Map(request, existing);
 
-    //     public async Task<ApiResponse<bool>> UpdateCategoryAsync(int categoryId, CategoryRequestDto request)
-    //     {
-    //         try
-    //         {
-    //             var existing = await _repository.GetByIdAsync(categoryId);
-    //             if (existing == null)
-    //                 return ApiResponse<bool>.ErrorResponse("Category not found", 404);
+            existing.Sizes = JsonHelper.ToJson(request.Sizes);
+            existing.Colors = JsonHelper.ToJson(request.Colors);
+            existing.SKU = request.SKU?.Trim();
+            existing.Brand = request.Brand?.Trim();
 
-    //             _mapper.Map(request, existing);
-    //             var result = await _repository.UpdateAsync(categoryId, existing);
+            var result = await _repository.UpdateAsync(productId, existing);
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to update product", 400);
 
-    //             if (result <= 0)
-    //                 return ApiResponse<bool>.ErrorResponse("Failed to update category", 400);
+            return ApiResponse<bool>.SuccessResponse(true, "Product updated successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error updating product: {ex.Message}", 500);
+        }
+    }
 
-    //             return ApiResponse<bool>.SuccessResponse(true, "Category updated successfully");
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             return ApiResponse<bool>.ErrorResponse($"Error updating category: {ex.Message}", 500);
-    //         }
-    //     }
+    public async Task<ApiResponse<bool>> DeleteProductAsync(int productId)
+    {
+        try
+        {
+            var existing = await _repository.GetByIdAsync(productId);
+            if (existing == null)
+                return ApiResponse<bool>.ErrorResponse("Product not found", 404);
 
-    //     public async Task<ApiResponse<bool>> DeleteCategoryAsync(int categoryId)
-    //     {
-    //         try
-    //         {
-    //             var existing = await _repository.GetByIdAsync(categoryId);
-    //             if (existing == null)
-    //                 return ApiResponse<bool>.ErrorResponse("Category not found", 404);
+            var result = await _repository.DeleteAsync(productId);
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to delete product", 400);
 
-    //             var result = await _repository.DeleteAsync(categoryId);
-    //             if (result <= 0)
-    //                 return ApiResponse<bool>.ErrorResponse("Failed to delete category", 400);
+            return ApiResponse<bool>.SuccessResponse(true, "Product deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error deleting product: {ex.Message}", 500);
+        }
+    }
+}
 
-    //             return ApiResponse<bool>.SuccessResponse(true, "Category deleted successfully");
-    //         }
-    //         catch (Exception ex)
-    //         {
-    //             return ApiResponse<bool>.ErrorResponse($"Error deleting category: {ex.Message}", 500);
-    //         }
-    //     }
-    // }
-
-
-    public class CategoryService : ICategoryService
+public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _repository;
         private readonly IMapper _mapper;
@@ -486,184 +374,382 @@
     }
 
 
-    // /// <summary>
-    /// Order Service Implementation
-    /// </summary>
-    public class OrderService : IOrderService
+// /// <summary>
+/// Order Service Implementation
+/// </summary>
+//public class OrderService : IOrderService
+//{
+//    private readonly IOrderRepository _orderRepository;
+//    private readonly IOrderDetailRepository _detailRepository;
+//    private readonly IMapper _mapper;
+//    private readonly INotificationService _notificationService; // ✅ NEW
+
+
+//public OrderService(IOrderRepository orderRepository, IOrderDetailRepository detailRepository, IMapper mapper, INotificationService notificationService)
+//    {
+//        _orderRepository = orderRepository;
+//        _detailRepository = detailRepository;
+//        _mapper = mapper;
+//    _notificationService = notificationService; // ✅ NEW
+
+//}
+
+//public async Task<ApiResponse<OrderResponseDto>> CreateOrderAsync(OrderCreateRequestDto request)
+//    {
+//        try
+//        {
+//            var order = _mapper.Map<Order>(request);
+//            order.CreatedDate = DateTime.Now;
+
+//            var id = await _orderRepository.CreateAsync(order);
+//            if (id <= 0)
+//                return ApiResponse<OrderResponseDto>.ErrorResponse("Failed to create order", 400);
+
+//            var created = await _orderRepository.GetByIdAsync(id);
+//            var response = _mapper.Map<OrderResponseDto>(created);
+
+//            return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order created successfully", 201);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<OrderResponseDto>.ErrorResponse($"Error creating order: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<OrderResponseDto>> GetOrderByIdAsync(int orderId)
+//    {
+//        try
+//        {
+//            var order = await _orderRepository.GetByIdAsync(orderId);
+//            if (order == null)
+//                return ApiResponse<OrderResponseDto>.ErrorResponse("Order not found", 404);
+
+//            var details = await _detailRepository.GetByOrderAsync(orderId);
+//            var response = _mapper.Map<OrderResponseDto>(order);
+//            response.OrderDetails = _mapper.Map<List<OrderDetailResponseDto>>(details);
+
+//            return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order retrieved successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<OrderResponseDto>.ErrorResponse($"Error retrieving order: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<PaginatedResponse<OrderResponseDto>>> GetOrdersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+//    {
+//        try
+//        {
+//            var orders = await _orderRepository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+//            var response = new PaginatedResponse<OrderResponseDto>
+//            {
+//                Items = _mapper.Map<List<OrderResponseDto>>(orders),
+//                PageNumber = pageNumber,
+//                PageSize = pageSize,
+//                TotalCount = orders.Count
+//            };
+
+//            return ApiResponse<PaginatedResponse<OrderResponseDto>>.SuccessResponse(response, "Orders retrieved successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<PaginatedResponse<OrderResponseDto>>.ErrorResponse($"Error retrieving orders: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> UpdateOrderAsync(int orderId, OrderUpdateRequestDto request)
+//    {
+//        try
+//        {
+//            var existing = await _orderRepository.GetByIdAsync(orderId);
+//            if (existing == null)
+//                return ApiResponse<bool>.ErrorResponse("Order not found", 404);
+
+//            _mapper.Map(request, existing);
+//            var result = await _orderRepository.UpdateAsync(orderId, existing);
+
+//            if (result <= 0)
+//                return ApiResponse<bool>.ErrorResponse("Failed to update order", 400);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Order updated successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error updating order: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> DeleteOrderAsync(int orderId)
+//    {
+//        try
+//        {
+//            var existing = await _orderRepository.GetByIdAsync(orderId);
+//            if (existing == null)
+//                return ApiResponse<bool>.ErrorResponse("Order not found", 404);
+
+//            var result = await _orderRepository.DeleteAsync(orderId);
+//            if (result <= 0)
+//                return ApiResponse<bool>.ErrorResponse("Failed to delete order", 400);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Order deleted successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error deleting order: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<OrderDetailResponseDto>> AddOrderDetailAsync(OrderDetailRequestDto request)
+//    {
+//        try
+//        {
+//            var detail = _mapper.Map<OrderDetail>(request);
+//            var id = await _detailRepository.CreateAsync(detail);
+
+//            if (id <= 0)
+//                return ApiResponse<OrderDetailResponseDto>.ErrorResponse("Failed to add order detail", 400);
+
+//            var created = await _detailRepository.GetByIdAsync(id);
+//            var response = _mapper.Map<OrderDetailResponseDto>(created);
+
+//            return ApiResponse<OrderDetailResponseDto>.SuccessResponse(response, "Order detail added successfully", 201);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<OrderDetailResponseDto>.ErrorResponse($"Error adding order detail: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<List<OrderDetailResponseDto>>> GetOrderDetailsAsync(int orderId)
+//    {
+//        try
+//        {
+//            var details = await _detailRepository.GetByOrderAsync(orderId);
+//            var response = _mapper.Map<List<OrderDetailResponseDto>>(details);
+
+//            return ApiResponse<List<OrderDetailResponseDto>>.SuccessResponse(response, "Order details retrieved successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<List<OrderDetailResponseDto>>.ErrorResponse($"Error retrieving order details: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> DeleteOrderDetailAsync(int orderDetailId)
+//    {
+//        try
+//        {
+//            var result = await _detailRepository.DeleteAsync(orderDetailId);
+//            if (result <= 0)
+//                return ApiResponse<bool>.ErrorResponse("Failed to delete order detail", 400);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Order detail deleted successfully");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error deleting order detail: {ex.Message}", 500);
+//        }
+//    }
+//}
+
+
+public class OrderService : IOrderService
+{
+    private readonly IOrderRepository _orderRepository;
+    private readonly IOrderDetailRepository _detailRepository;
+    private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService; // ✅ NEW
+
+    public OrderService(
+        IOrderRepository orderRepository,
+        IOrderDetailRepository detailRepository,
+        IMapper mapper,
+        INotificationService notificationService) // ✅ NEW
     {
-        private readonly IOrderRepository _orderRepository;
-        private readonly IOrderDetailRepository _detailRepository;
-        private readonly IMapper _mapper;
+        _orderRepository = orderRepository;
+        _detailRepository = detailRepository;
+        _mapper = mapper;
+        _notificationService = notificationService; // ✅ NEW
+    }
 
-        public OrderService(IOrderRepository orderRepository, IOrderDetailRepository detailRepository, IMapper mapper)
+    // ✅ UPDATED — notification call add hua
+    public async Task<ApiResponse<OrderResponseDto>> CreateOrderAsync(OrderCreateRequestDto request)
+    {
+        try
         {
-            _orderRepository = orderRepository;
-            _detailRepository = detailRepository;
-            _mapper = mapper;
+            var order = _mapper.Map<Order>(request);
+            order.CreatedDate = DateTime.Now;
+
+            var id = await _orderRepository.CreateAsync(order);
+            if (id <= 0)
+                return ApiResponse<OrderResponseDto>.ErrorResponse("Failed to create order", 400);
+
+            var created = await _orderRepository.GetByIdAsync(id);
+            var response = _mapper.Map<OrderResponseDto>(created);
+
+            // ✅ Order create hone ke baad notification bhejo — fire & forget
+            //_ = Task.Run(() => _notificationService.SendOrderCreatedAsync(created!));
+
+            await _notificationService.SendOrderCreatedAsync(created!); // ✅ direct await
+
+
+            return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order created successfully", 201);
         }
-
-        public async Task<ApiResponse<OrderResponseDto>> CreateOrderAsync(OrderCreateRequestDto request)
+        catch (Exception ex)
         {
-            try
-            {
-                var order = _mapper.Map<Order>(request);
-                order.CreatedDate = DateTime.Now;
-
-                var id = await _orderRepository.CreateAsync(order);
-                if (id <= 0)
-                    return ApiResponse<OrderResponseDto>.ErrorResponse("Failed to create order", 400);
-
-                var created = await _orderRepository.GetByIdAsync(id);
-                var response = _mapper.Map<OrderResponseDto>(created);
-
-                return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order created successfully", 201);
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<OrderResponseDto>.ErrorResponse($"Error creating order: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<OrderResponseDto>> GetOrderByIdAsync(int orderId)
-        {
-            try
-            {
-                var order = await _orderRepository.GetByIdAsync(orderId);
-                if (order == null)
-                    return ApiResponse<OrderResponseDto>.ErrorResponse("Order not found", 404);
-
-                var details = await _detailRepository.GetByOrderAsync(orderId);
-                var response = _mapper.Map<OrderResponseDto>(order);
-                response.OrderDetails = _mapper.Map<List<OrderDetailResponseDto>>(details);
-
-                return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<OrderResponseDto>.ErrorResponse($"Error retrieving order: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<PaginatedResponse<OrderResponseDto>>> GetOrdersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
-        {
-            try
-            {
-                var orders = await _orderRepository.GetByTenantAsync(tenantId, pageNumber, pageSize);
-                var response = new PaginatedResponse<OrderResponseDto>
-                {
-                    Items = _mapper.Map<List<OrderResponseDto>>(orders),
-                    PageNumber = pageNumber,
-                    PageSize = pageSize,
-                    TotalCount = orders.Count
-                };
-
-                return ApiResponse<PaginatedResponse<OrderResponseDto>>.SuccessResponse(response, "Orders retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<PaginatedResponse<OrderResponseDto>>.ErrorResponse($"Error retrieving orders: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<bool>> UpdateOrderAsync(int orderId, OrderUpdateRequestDto request)
-        {
-            try
-            {
-                var existing = await _orderRepository.GetByIdAsync(orderId);
-                if (existing == null)
-                    return ApiResponse<bool>.ErrorResponse("Order not found", 404);
-
-                _mapper.Map(request, existing);
-                var result = await _orderRepository.UpdateAsync(orderId, existing);
-
-                if (result <= 0)
-                    return ApiResponse<bool>.ErrorResponse("Failed to update order", 400);
-
-                return ApiResponse<bool>.SuccessResponse(true, "Order updated successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<bool>.ErrorResponse($"Error updating order: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<bool>> DeleteOrderAsync(int orderId)
-        {
-            try
-            {
-                var existing = await _orderRepository.GetByIdAsync(orderId);
-                if (existing == null)
-                    return ApiResponse<bool>.ErrorResponse("Order not found", 404);
-
-                var result = await _orderRepository.DeleteAsync(orderId);
-                if (result <= 0)
-                    return ApiResponse<bool>.ErrorResponse("Failed to delete order", 400);
-
-                return ApiResponse<bool>.SuccessResponse(true, "Order deleted successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<bool>.ErrorResponse($"Error deleting order: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<OrderDetailResponseDto>> AddOrderDetailAsync(OrderDetailRequestDto request)
-        {
-            try
-            {
-                var detail = _mapper.Map<OrderDetail>(request);
-                var id = await _detailRepository.CreateAsync(detail);
-
-                if (id <= 0)
-                    return ApiResponse<OrderDetailResponseDto>.ErrorResponse("Failed to add order detail", 400);
-
-                var created = await _detailRepository.GetByIdAsync(id);
-                var response = _mapper.Map<OrderDetailResponseDto>(created);
-
-                return ApiResponse<OrderDetailResponseDto>.SuccessResponse(response, "Order detail added successfully", 201);
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<OrderDetailResponseDto>.ErrorResponse($"Error adding order detail: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<List<OrderDetailResponseDto>>> GetOrderDetailsAsync(int orderId)
-        {
-            try
-            {
-                var details = await _detailRepository.GetByOrderAsync(orderId);
-                var response = _mapper.Map<List<OrderDetailResponseDto>>(details);
-
-                return ApiResponse<List<OrderDetailResponseDto>>.SuccessResponse(response, "Order details retrieved successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<List<OrderDetailResponseDto>>.ErrorResponse($"Error retrieving order details: {ex.Message}", 500);
-            }
-        }
-
-        public async Task<ApiResponse<bool>> DeleteOrderDetailAsync(int orderDetailId)
-        {
-            try
-            {
-                var result = await _detailRepository.DeleteAsync(orderDetailId);
-                if (result <= 0)
-                    return ApiResponse<bool>.ErrorResponse("Failed to delete order detail", 400);
-
-                return ApiResponse<bool>.SuccessResponse(true, "Order detail deleted successfully");
-            }
-            catch (Exception ex)
-            {
-                return ApiResponse<bool>.ErrorResponse($"Error deleting order detail: {ex.Message}", 500);
-            }
+            return ApiResponse<OrderResponseDto>.ErrorResponse($"Error creating order: {ex.Message}", 500);
         }
     }
 
-    /// <summary>
-    /// Tenant Service Implementation
-    /// </summary>
-    public class TenantService : ITenantService
+    public async Task<ApiResponse<OrderResponseDto>> GetOrderByIdAsync(int orderId)
+    {
+        try
+        {
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+                return ApiResponse<OrderResponseDto>.ErrorResponse("Order not found", 404);
+
+            var details = await _detailRepository.GetByOrderAsync(orderId);
+            var response = _mapper.Map<OrderResponseDto>(order);
+            response.OrderDetails = _mapper.Map<List<OrderDetailResponseDto>>(details);
+
+            return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<OrderResponseDto>.ErrorResponse($"Error retrieving order: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<PaginatedResponse<OrderResponseDto>>> GetOrdersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10)
+    {
+        try
+        {
+            var orders = await _orderRepository.GetByTenantAsync(tenantId, pageNumber, pageSize);
+            var response = new PaginatedResponse<OrderResponseDto>
+            {
+                Items = _mapper.Map<List<OrderResponseDto>>(orders),
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = orders.Count
+            };
+
+            return ApiResponse<PaginatedResponse<OrderResponseDto>>.SuccessResponse(response, "Orders retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<PaginatedResponse<OrderResponseDto>>.ErrorResponse($"Error retrieving orders: {ex.Message}", 500);
+        }
+    }
+
+    // ✅ UPDATED — old status save karke notification bhejo
+    public async Task<ApiResponse<bool>> UpdateOrderAsync(int orderId, OrderUpdateRequestDto request)
+    {
+        try
+        {
+            var existing = await _orderRepository.GetByIdAsync(orderId);
+            if (existing == null)
+                return ApiResponse<bool>.ErrorResponse("Order not found", 404);
+
+            var oldStatus = existing.Status; // ✅ purana status save karo
+
+            _mapper.Map(request, existing);
+            var result = await _orderRepository.UpdateAsync(orderId, existing);
+
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to update order", 400);
+
+            // ✅ Sirf tab bhejo jab status change hua ho
+            if (oldStatus != existing.Status)
+                //_ = Task.Run(() => _notificationService.SendOrderStatusUpdatedAsync(existing, oldStatus));
+                await _notificationService.SendOrderStatusUpdatedAsync(existing, oldStatus); // ✅ direct await
+
+
+            return ApiResponse<bool>.SuccessResponse(true, "Order updated successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error updating order: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteOrderAsync(int orderId)
+    {
+        try
+        {
+            var existing = await _orderRepository.GetByIdAsync(orderId);
+            if (existing == null)
+                return ApiResponse<bool>.ErrorResponse("Order not found", 404);
+
+            var result = await _orderRepository.DeleteAsync(orderId);
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to delete order", 400);
+
+            return ApiResponse<bool>.SuccessResponse(true, "Order deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error deleting order: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<OrderDetailResponseDto>> AddOrderDetailAsync(OrderDetailRequestDto request)
+    {
+        try
+        {
+            var detail = _mapper.Map<OrderDetail>(request);
+            var id = await _detailRepository.CreateAsync(detail);
+
+            if (id <= 0)
+                return ApiResponse<OrderDetailResponseDto>.ErrorResponse("Failed to add order detail", 400);
+
+            var created = await _detailRepository.GetByIdAsync(id);
+            var response = _mapper.Map<OrderDetailResponseDto>(created);
+
+            return ApiResponse<OrderDetailResponseDto>.SuccessResponse(response, "Order detail added successfully", 201);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<OrderDetailResponseDto>.ErrorResponse($"Error adding order detail: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<List<OrderDetailResponseDto>>> GetOrderDetailsAsync(int orderId)
+    {
+        try
+        {
+            var details = await _detailRepository.GetByOrderAsync(orderId);
+            var response = _mapper.Map<List<OrderDetailResponseDto>>(details);
+
+            return ApiResponse<List<OrderDetailResponseDto>>.SuccessResponse(response, "Order details retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<OrderDetailResponseDto>>.ErrorResponse($"Error retrieving order details: {ex.Message}", 500);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteOrderDetailAsync(int orderDetailId)
+    {
+        try
+        {
+            var result = await _detailRepository.DeleteAsync(orderDetailId);
+            if (result <= 0)
+                return ApiResponse<bool>.ErrorResponse("Failed to delete order detail", 400);
+
+            return ApiResponse<bool>.SuccessResponse(true, "Order detail deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error deleting order detail: {ex.Message}", 500);
+        }
+    }
+}
+
+/// <summary>
+/// Tenant Service Implementation
+/// </summary>
+public class TenantService : ITenantService
     {
         private readonly ITenantRepository _repository;
         private readonly IMapper _mapper;
@@ -1821,11 +1907,41 @@ public class TenantSliderService : ITenantSliderService
         }
     }
 
+    //public async Task<ApiResponse<int>> AddAsync(TenantSliderRequestDto request)
+    //{
+    //    try
+    //    {
+    //        var entity = _mapper.Map<TenantSlider>(request);
+    //        var id = await _repository.AddAsync(entity);
+    //        return ApiResponse<int>.SuccessResponse(id, "Slider added!", 201);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return ApiResponse<int>.ErrorResponse(ex.Message, 500);
+    //    }
+    //}
+
+
     public async Task<ApiResponse<int>> AddAsync(TenantSliderRequestDto request)
     {
         try
         {
-            var entity = _mapper.Map<TenantSlider>(request);
+            var entity = new TenantSlider
+            {
+                TenantId = request.TenantId,
+                ImageUrl = request.ImageUrl,
+                Title = request.Title,
+                Subtitle = request.Subtitle,
+                ButtonText = request.ButtonText,
+                ButtonLink = request.ButtonLink,
+                OrderNo = request.OrderNo,
+                IsActive = request.IsActive,
+                LayoutType = request.LayoutType,
+                BgColor = request.BgColor,
+                TextColor = request.TextColor,
+                OverlayOpacity = request.OverlayOpacity,
+                IsPresetImage = request.IsPresetImage
+            };
             var id = await _repository.AddAsync(entity);
             return ApiResponse<int>.SuccessResponse(id, "Slider added!", 201);
         }
@@ -1849,6 +1965,20 @@ public class TenantSliderService : ITenantSliderService
         }
     }
 
+    public async Task<ApiResponse<List<TenantSliderResponseDto>>> GetPresetImagesAsync(int tenantId)
+    {
+        try
+        {
+            var sliders = await _repository.GetPresetImagesAsync(tenantId);
+            return ApiResponse<List<TenantSliderResponseDto>>.SuccessResponse(
+                _mapper.Map<List<TenantSliderResponseDto>>(sliders));
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<TenantSliderResponseDto>>.ErrorResponse(ex.Message, 500);
+        }
+    }
+
     public async Task<ApiResponse<bool>> DeleteAsync(int sliderId)
     {
         try
@@ -1859,6 +1989,699 @@ public class TenantSliderService : ITenantSliderService
         catch (Exception ex)
         {
             return ApiResponse<bool>.ErrorResponse(ex.Message, 500);
+        }
+    }
+}
+
+
+
+
+// =============================================
+// ✅ NAYE — SIRF YE 2 ADD HUE HAIN
+// =============================================
+
+/// <summary>
+/// TenantIntegrationService Implementation
+/// Email + WhatsApp settings save/get + test
+/// </summary>
+public class TenantIntegrationService : ITenantIntegrationService
+{
+    private readonly ITenantIntegrationRepository _repository;
+    private readonly IMapper _mapper;
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public TenantIntegrationService(
+        ITenantIntegrationRepository repository,
+        IMapper mapper,
+        IHttpClientFactory httpClientFactory)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _httpClientFactory = httpClientFactory;
+    }
+
+    public async Task<ApiResponse<TenantIntegrationResponseDto>> GetByTenantAsync(int tenantId)
+    {
+        try
+        {
+            var integration = await _repository.GetByTenantAsync(tenantId);
+
+            // Agar koi settings nahi hain to empty defaults return karo
+            if (integration == null)
+                integration = new TenantIntegration { TenantId = tenantId };
+
+            var response = _mapper.Map<TenantIntegrationResponseDto>(integration);
+
+            // Sensitive keys mask karo — frontend pe *** dikhao
+            if (!string.IsNullOrEmpty(response.EmailApiKey))
+                response.EmailApiKey = "****";
+            if (!string.IsNullOrEmpty(response.WhatsAppToken))
+                response.WhatsAppToken = "****";
+
+            return ApiResponse<TenantIntegrationResponseDto>.SuccessResponse(response);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<TenantIntegrationResponseDto>.ErrorResponse(ex.Message, 500);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> UpsertAsync(TenantIntegrationRequestDto request)
+    {
+        try
+        {
+            var result = await _repository.UpsertAsync(request.TenantId, request);
+            if (result == null)
+                return ApiResponse<bool>.ErrorResponse("Failed to save integrations", 400);
+
+            return ApiResponse<bool>.SuccessResponse(true, "Integration settings saved!");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse(ex.Message, 500);
+        }
+    }
+
+    public async Task<ApiResponse<bool>> DeleteAsync(int tenantId)
+    {
+        try
+        {
+            var deleted = await _repository.DeleteAsync(tenantId);
+            if (!deleted)
+                return ApiResponse<bool>.ErrorResponse("No integration found to delete", 404);
+
+            return ApiResponse<bool>.SuccessResponse(true, "Integration settings deleted!");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse(ex.Message, 500);
+        }
+    }
+
+    /// <summary>
+    /// Test Email — SendGrid API se real email bhejo
+    /// </summary>
+    public async Task<ApiResponse<bool>> TestEmailAsync(int tenantId, string toEmail)
+    {
+        try
+        {
+            var integration = await _repository.GetByTenantAsync(tenantId);
+
+            if (integration == null || !integration.IsEmailEnabled)
+                return ApiResponse<bool>.ErrorResponse("Email integration not configured or disabled", 400);
+
+            if (string.IsNullOrEmpty(integration.EmailApiKey))
+                return ApiResponse<bool>.ErrorResponse("Email API Key missing", 400);
+
+            // SendGrid API call
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", integration.EmailApiKey);
+
+            var payload = new
+            {
+                personalizations = new[]
+                {
+                    new { to = new[] { new { email = toEmail } } }
+                },
+                from = new
+                {
+                    email = integration.EmailSenderAddress ?? "noreply@test.com",
+                    name = integration.EmailSenderName ?? "Test"
+                },
+                subject = "Test Email from your Store",
+                content = new[]
+                {
+                    new { type = "text/plain", value = "Yeh ek test email hai. Aapka email integration kaam kar raha hai!" }
+                }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", content);
+
+            if (response.IsSuccessStatusCode)
+                return ApiResponse<bool>.SuccessResponse(true, $"Test email sent to {toEmail}!");
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResponse<bool>.ErrorResponse($"SendGrid error: {error}", 400);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error sending test email: {ex.Message}", 500);
+        }
+    }
+
+    /// <summary>
+    /// Test WhatsApp — Meta Cloud API se real message bhejo
+    /// </summary>
+    public async Task<ApiResponse<bool>> TestWhatsAppAsync(int tenantId, string toPhone)
+    {
+        try
+        {
+            var integration = await _repository.GetByTenantAsync(tenantId);
+
+            if (integration == null || !integration.IsWhatsAppEnabled)
+                return ApiResponse<bool>.ErrorResponse("WhatsApp integration not configured or disabled", 400);
+
+            if (string.IsNullOrEmpty(integration.WhatsAppToken))
+                return ApiResponse<bool>.ErrorResponse("WhatsApp Token missing", 400);
+
+            if (string.IsNullOrEmpty(integration.WhatsAppPhoneNumberId))
+                return ApiResponse<bool>.ErrorResponse("WhatsApp Phone Number ID missing", 400);
+
+            // Meta Cloud API call
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
+
+            var payload = new
+            {
+                messaging_product = "whatsapp",
+                to = toPhone,
+                type = "text",
+                text = new { body = "Yeh ek test message hai. Aapka WhatsApp integration kaam kar raha hai!" }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var url = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
+            var response = await client.PostAsync(url, content);
+
+            if (response.IsSuccessStatusCode)
+                return ApiResponse<bool>.SuccessResponse(true, $"Test WhatsApp sent to {toPhone}!");
+
+            var error = await response.Content.ReadAsStringAsync();
+            return ApiResponse<bool>.ErrorResponse($"Meta API error: {error}", 400);
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.ErrorResponse($"Error sending test WhatsApp: {ex.Message}", 500);
+        }
+    }
+}
+
+/// <summary>
+/// NotificationLogService Implementation
+/// Notification history fetch karne ke liye
+/// </summary>
+public class NotificationLogService : INotificationLogService
+{
+    private readonly INotificationLogRepository _repository;
+    private readonly IMapper _mapper;
+
+    public NotificationLogService(INotificationLogRepository repository, IMapper mapper)
+    {
+        _repository = repository;
+        _mapper = mapper;
+    }
+
+    public async Task<ApiResponse<List<NotificationLogResponseDto>>> GetByTenantAsync(int tenantId, int page = 1, int pageSize = 20)
+    {
+        try
+        {
+            var logs = await _repository.GetByTenantAsync(tenantId, page, pageSize);
+            var response = _mapper.Map<List<NotificationLogResponseDto>>(logs);
+            return ApiResponse<List<NotificationLogResponseDto>>.SuccessResponse(response, "Logs retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<NotificationLogResponseDto>>.ErrorResponse(ex.Message, 500);
+        }
+    }
+
+    public async Task<ApiResponse<List<NotificationLogResponseDto>>> GetByOrderAsync(int tenantId, int orderId)
+    {
+        try
+        {
+            var logs = await _repository.GetByOrderAsync(tenantId, orderId);
+            var response = _mapper.Map<List<NotificationLogResponseDto>>(logs);
+            return ApiResponse<List<NotificationLogResponseDto>>.SuccessResponse(response, "Order logs retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<NotificationLogResponseDto>>.ErrorResponse(ex.Message, 500);
+        }
+    }
+
+    public async Task<ApiResponse<List<NotificationLogResponseDto>>> GetFailedAsync(int tenantId)
+    {
+        try
+        {
+            var logs = await _repository.GetFailedAsync(tenantId);
+            var response = _mapper.Map<List<NotificationLogResponseDto>>(logs);
+            return ApiResponse<List<NotificationLogResponseDto>>.SuccessResponse(response, "Failed logs retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<NotificationLogResponseDto>>.ErrorResponse(ex.Message, 500);
+        }
+    }
+}
+
+
+
+
+
+//public class NotificationService : INotificationService
+//{
+//    private readonly ITenantIntegrationRepository _integrationRepo;
+//    private readonly INotificationLogRepository _logRepo;
+//    private readonly IHttpClientFactory _httpClientFactory;
+
+//    public NotificationService(
+//        ITenantIntegrationRepository integrationRepo,
+//        INotificationLogRepository logRepo,
+//        IHttpClientFactory httpClientFactory)
+//    {
+//        _integrationRepo = integrationRepo;
+//        _logRepo = logRepo;
+//        _httpClientFactory = httpClientFactory;
+//    }
+
+//    public async Task SendOrderCreatedAsync(Order order)
+//    {
+//        var integration = await _integrationRepo.GetByTenantAsync(order.TenantId);
+//        if (integration == null) return;
+
+//        if (integration.IsEmailEnabled && !string.IsNullOrEmpty(order.CustomerEmail))
+//        {
+//            var subject = $"✅ Order Confirmed #{order.OrderId}";
+//            var body = $@"
+//                <div style='font-family:Arial;max-width:600px;margin:auto'>
+//                    <h2 style='color:#ea6c2d'>Order Confirmed!</h2>
+//                    <p>Dear <strong>{order.CustomerName}</strong>,</p>
+//                    <p>Your order has been placed successfully.</p>
+//                    <table style='width:100%;border-collapse:collapse'>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Order ID</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd'>#{order.OrderId}</td></tr>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Total Amount</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd'>Rs. {order.TotalAmount:N0}
+//</td></tr>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Status</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd'>{order.Status}</td></tr>
+//                    </table>
+//                    <p style='margin-top:20px'>Thank you for shopping with us!</p>
+//                </div>";
+
+//            await SendEmailAsync(integration, order.CustomerEmail, subject, body,
+//                order.TenantId, order.OrderId, NotificationEvents.OrderCreated);
+//        }
+
+//        if (integration.IsWhatsAppEnabled && !string.IsNullOrEmpty(order.CustomerPhone))
+//        {
+//            var message = $"✅ *Order Confirmed!*\n\n" +
+//                         $"Hello *{order.CustomerName}*,\n" +
+//                         $"Your order *#{order.OrderId}* has been placed.\n" +
+//                         $"💰 Total: *{order.TotalAmount:C}*\n" +
+//                         $"📦 Status: *{order.Status}*\n\n" +
+//                         $"Thank you for shopping with us!";
+
+//            await SendWhatsAppAsync(integration, order.CustomerPhone, message,
+//                order.TenantId, order.OrderId, NotificationEvents.OrderCreated);
+//        }
+//    }
+
+//    public async Task SendOrderStatusUpdatedAsync(Order order, string oldStatus)
+//    {
+//        var integration = await _integrationRepo.GetByTenantAsync(order.TenantId);
+//        if (integration == null) return;
+
+//        var emoji = order.Status switch
+//        {
+//            "Confirmed" => "✅",
+//            "Shipped" => "🚚",
+//            "Delivered" => "🎉",
+//            "Cancelled" => "❌",
+//            _ => "📦"
+//        };
+
+//        if (integration.IsEmailEnabled && !string.IsNullOrEmpty(order.CustomerEmail))
+//        {
+//            var subject = $"{emoji} Order #{order.OrderId} Status Updated — {order.Status}";
+//            var body = $@"
+//                <div style='font-family:Arial;max-width:600px;margin:auto'>
+//                    <h2 style='color:#ea6c2d'>{emoji} Order Status Updated</h2>
+//                    <p>Dear <strong>{order.CustomerName}</strong>,</p>
+//                    <p>Your order status has been updated.</p>
+//                    <table style='width:100%;border-collapse:collapse'>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Order ID</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd'>#{order.OrderId}</td></tr>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Previous Status</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd'>{oldStatus}</td></tr>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>New Status</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd;color:green'><b>{order.Status}</b></td></tr>
+//                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Total Amount</b></td>
+//                            <td style='padding:8px;border:1px solid #ddd'>{order.TotalAmount:C}</td></tr>
+//                    </table>
+//                    <p style='margin-top:20px'>Thank you for shopping with us!</p>
+//                </div>";
+
+//            await SendEmailAsync(integration, order.CustomerEmail, subject, body,
+//                order.TenantId, order.OrderId, NotificationEvents.OrderConfirmed);
+//        }
+
+//        if (integration.IsWhatsAppEnabled && !string.IsNullOrEmpty(order.CustomerPhone))
+//        {
+//            var message = $"{emoji} *Order Status Updated!*\n\n" +
+//                         $"Hello *{order.CustomerName}*,\n" +
+//                         $"Order *#{order.OrderId}* status changed:\n" +
+//                         $"📌 Previous: *{oldStatus}*\n" +
+//                         $"✅ New: *{order.Status}*\n\n" +
+//                         $"Thank you!";
+
+//            await SendWhatsAppAsync(integration, order.CustomerPhone, message,
+//                order.TenantId, order.OrderId, NotificationEvents.OrderConfirmed);
+//        }
+//    }
+
+//    private async Task SendEmailAsync(
+//        TenantIntegration integration,
+//        string toEmail, string subject, string body,
+//        int tenantId, int orderId, string eventType)
+//    {
+//        var log = new NotificationLog
+//        {
+//            TenantId = tenantId,
+//            OrderId = orderId,
+//            Channel = NotificationChannels.Email,
+//            EventType = eventType,
+//            RecipientContact = toEmail,
+//            SentAt = DateTime.Now
+//        };
+
+//        try
+//        {
+//            var client = _httpClientFactory.CreateClient();
+//            client.DefaultRequestHeaders.Authorization =
+//                new AuthenticationHeaderValue("Bearer", integration.EmailApiKey);
+
+//            var payload = new
+//            {
+//                personalizations = new[] { new { to = new[] { new { email = toEmail } } } },
+//                from = new
+//                {
+//                    email = integration.EmailSenderAddress ?? "noreply@store.com",
+//                    name = integration.EmailSenderName ?? "Store"
+//                },
+//                subject = subject,
+//                content = new[] { new { type = "text/html", value = body } }
+//            };
+
+//            var json = JsonSerializer.Serialize(payload);
+//            var content = new StringContent(json, Encoding.UTF8, "application/json");
+//            var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", content);
+
+//            log.Status = response.IsSuccessStatusCode
+//                ? NotificationStatus.Sent
+//                : NotificationStatus.Failed;
+
+//            if (!response.IsSuccessStatusCode)
+//                log.ErrorMessage = await response.Content.ReadAsStringAsync();
+//        }
+//        catch (Exception ex)
+//        {
+//            log.Status = NotificationStatus.Failed;
+//            log.ErrorMessage = ex.Message;
+//        }
+//        finally
+//        {
+//            await _logRepo.InsertAsync(log);
+//        }
+//    }
+
+//    private async Task SendWhatsAppAsync(
+//        TenantIntegration integration,
+//        string toPhone, string message,
+//        int tenantId, int orderId, string eventType)
+//    {
+//        var log = new NotificationLog
+//        {
+//            TenantId = tenantId,
+//            OrderId = orderId,
+//            Channel = NotificationChannels.WhatsApp,
+//            EventType = eventType,
+//            RecipientContact = toPhone,
+//            SentAt = DateTime.Now
+//        };
+
+//        try
+//        {
+//            var client = _httpClientFactory.CreateClient();
+//            client.DefaultRequestHeaders.Authorization =
+//                new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
+
+//            var payload = new
+//            {
+//                messaging_product = "whatsapp",
+//                to = toPhone,
+//                type = "text",
+//                text = new { body = message }
+//            };
+
+//            var json = JsonSerializer.Serialize(payload);
+//            var content = new StringContent(json, Encoding.UTF8, "application/json");
+//            var url = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
+//            var response = await client.PostAsync(url, content);
+
+//            log.Status = response.IsSuccessStatusCode
+//                ? NotificationStatus.Sent
+//                : NotificationStatus.Failed;
+
+//            if (!response.IsSuccessStatusCode)
+//                log.ErrorMessage = await response.Content.ReadAsStringAsync();
+//        }
+//        catch (Exception ex)
+//        {
+//            log.Status = NotificationStatus.Failed;
+//            log.ErrorMessage = ex.Message;
+//        }
+//        finally
+//        {
+//            await _logRepo.InsertAsync(log);
+//        }
+//    }
+//}
+
+
+
+public class NotificationService : INotificationService
+{
+    private readonly ITenantIntegrationRepository _integrationRepo;
+    private readonly INotificationLogRepository _logRepo;
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public NotificationService(
+        ITenantIntegrationRepository integrationRepo,
+        INotificationLogRepository logRepo,
+        IHttpClientFactory httpClientFactory)
+    {
+        _integrationRepo = integrationRepo;
+        _logRepo = logRepo;
+        _httpClientFactory = httpClientFactory;
+    }
+
+    public async Task SendOrderCreatedAsync(Order order)
+    {
+        var integration = await _integrationRepo.GetByTenantAsync(order.TenantId);
+        if (integration == null) return;
+
+        if (integration.IsEmailEnabled && !string.IsNullOrEmpty(order.CustomerEmail))
+        {
+            var subject = $"✅ Order Confirmed #{order.OrderId}";
+            var body = $@"
+                <div style='font-family:Arial;max-width:600px;margin:auto'>
+                    <h2 style='color:#ea6c2d'>Order Confirmed!</h2>
+                    <p>Dear <strong>{order.CustomerName}</strong>,</p>
+                    <p>Your order has been placed successfully.</p>
+                    <table style='width:100%;border-collapse:collapse'>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Order ID</b></td>
+                            <td style='padding:8px;border:1px solid #ddd'>#{order.OrderId}</td></tr>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Total Amount</b></td>
+                            <td style='padding:8px;border:1px solid #ddd'>Rs. {order.TotalAmount:N0}</td></tr>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Status</b></td>
+                            <td style='padding:8px;border:1px solid #ddd'>{order.Status}</td></tr>
+                    </table>
+                    <p style='margin-top:20px'>Thank you for shopping with us!</p>
+                </div>";
+
+            await SendEmailAsync(integration, order.CustomerEmail, subject, body,
+                order.TenantId, order.OrderId, NotificationEvents.OrderCreated);
+        }
+
+        if (integration.IsWhatsAppEnabled && !string.IsNullOrEmpty(order.CustomerPhone))
+        {
+            var message = $"✅ *Order Confirmed!*\n\n" +
+                         $"Hello *{order.CustomerName}*,\n" +
+                         $"Your order *#{order.OrderId}* has been placed.\n" +
+                         $"💰 Total: *Rs. {order.TotalAmount:N0}*\n" +
+                         $"📦 Status: *{order.Status}*\n\n" +
+                         $"Thank you for shopping with us!";
+
+            await SendWhatsAppAsync(integration, order.CustomerPhone, message,
+                order.TenantId, order.OrderId, NotificationEvents.OrderCreated);
+        }
+    }
+
+    public async Task SendOrderStatusUpdatedAsync(Order order, string oldStatus)
+    {
+        var integration = await _integrationRepo.GetByTenantAsync(order.TenantId);
+        if (integration == null) return;
+
+        var emoji = order.Status switch
+        {
+            "Confirmed" => "✅",
+            "Shipped" => "🚚",
+            "Delivered" => "🎉",
+            "Cancelled" => "❌",
+            _ => "📦"
+        };
+
+        if (integration.IsEmailEnabled && !string.IsNullOrEmpty(order.CustomerEmail))
+        {
+            var subject = $"{emoji} Order #{order.OrderId} Status Updated — {order.Status}";
+            var body = $@"
+                <div style='font-family:Arial;max-width:600px;margin:auto'>
+                    <h2 style='color:#ea6c2d'>{emoji} Order Status Updated</h2>
+                    <p>Dear <strong>{order.CustomerName}</strong>,</p>
+                    <p>Your order status has been updated.</p>
+                    <table style='width:100%;border-collapse:collapse'>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Order ID</b></td>
+                            <td style='padding:8px;border:1px solid #ddd'>#{order.OrderId}</td></tr>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Previous Status</b></td>
+                            <td style='padding:8px;border:1px solid #ddd'>{oldStatus}</td></tr>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>New Status</b></td>
+                            <td style='padding:8px;border:1px solid #ddd;color:green'><b>{order.Status}</b></td></tr>
+                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Total Amount</b></td>
+                            <td style='padding:8px;border:1px solid #ddd'>Rs. {order.TotalAmount:N0}</td></tr>
+                    </table>
+                    <p style='margin-top:20px'>Thank you for shopping with us!</p>
+                </div>";
+
+            await SendEmailAsync(integration, order.CustomerEmail, subject, body,
+                order.TenantId, order.OrderId, NotificationEvents.OrderConfirmed);
+        }
+
+        if (integration.IsWhatsAppEnabled && !string.IsNullOrEmpty(order.CustomerPhone))
+        {
+            var message = $"{emoji} *Order Status Updated!*\n\n" +
+                         $"Hello *{order.CustomerName}*,\n" +
+                         $"Order *#{order.OrderId}* status changed:\n" +
+                         $"📌 Previous: *{oldStatus}*\n" +
+                         $"✅ New: *{order.Status}*\n\n" +
+                         $"Thank you!";
+
+            await SendWhatsAppAsync(integration, order.CustomerPhone, message,
+                order.TenantId, order.OrderId, NotificationEvents.OrderConfirmed);
+        }
+    }
+
+    private async Task SendEmailAsync(
+        TenantIntegration integration,
+        string toEmail, string subject, string body,
+        int tenantId, int orderId, string eventType)
+    {
+        var log = new NotificationLog
+        {
+            TenantId = tenantId,
+            OrderId = orderId,
+            Channel = NotificationChannels.Email,
+            EventType = eventType,
+            RecipientContact = toEmail,
+            SentAt = DateTime.Now
+        };
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", integration.EmailApiKey);
+
+            var payload = new
+            {
+                personalizations = new[] { new { to = new[] { new { email = toEmail } } } },
+                from = new
+                {
+                    email = integration.EmailSenderAddress ?? "noreply@store.com",
+                    name = integration.EmailSenderName ?? "Store"
+                },
+                subject = subject,
+                content = new[] { new { type = "text/html", value = body } }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", content);
+
+            log.Status = response.IsSuccessStatusCode
+                ? NotificationStatus.Sent
+                : NotificationStatus.Failed;
+
+            if (!response.IsSuccessStatusCode)
+                log.ErrorMessage = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            log.Status = NotificationStatus.Failed;
+            log.ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            await _logRepo.InsertAsync(log);
+        }
+    }
+
+    private async Task SendWhatsAppAsync(
+        TenantIntegration integration,
+        string toPhone, string message,
+        int tenantId, int orderId, string eventType)
+    {
+        var log = new NotificationLog
+        {
+            TenantId = tenantId,
+            OrderId = orderId,
+            Channel = NotificationChannels.WhatsApp,
+            EventType = eventType,
+            RecipientContact = toPhone,
+            SentAt = DateTime.Now
+        };
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
+
+            var payload = new
+            {
+                messaging_product = "whatsapp",
+                to = toPhone,
+                type = "text",
+                text = new { body = message }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var url = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
+            var response = await client.PostAsync(url, content);
+
+            log.Status = response.IsSuccessStatusCode
+                ? NotificationStatus.Sent
+                : NotificationStatus.Failed;
+
+            if (!response.IsSuccessStatusCode)
+                log.ErrorMessage = await response.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            log.Status = NotificationStatus.Failed;
+            log.ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            await _logRepo.InsertAsync(log);
         }
     }
 }

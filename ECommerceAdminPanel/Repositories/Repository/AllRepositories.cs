@@ -1,6 +1,7 @@
 namespace ECommerceAdminPanel.Repositories.Repository;
 
 using Dapper;
+using ECommerceAdminPanel.DTOs.Request;
 using ECommerceAdminPanel.Helper;
 using ECommerceAdminPanel.Models;
 using ECommerceAdminPanel.Repositories.IRepository;
@@ -673,6 +674,17 @@ public class TenantSettingsRepository : ITenantSettingsRepository
         parameters.Add("@FooterTagline", entity.FooterTagline);
         parameters.Add("@HeroBgColor", entity.HeroBgColor); // ✅ naya — baaki sab same raho
 
+        parameters.Add("@PromoBannerBg", entity.PromoBannerBg);
+        parameters.Add("@PromoBannerText", entity.PromoBannerText);
+        parameters.Add("@CardBg", entity.CardBg);
+        parameters.Add("@CardText", entity.CardText);
+        // ✅ Naye
+        parameters.Add("@CardStyle", entity.CardStyle);
+        parameters.Add("@CardRadius", entity.CardRadius);
+        parameters.Add("@FontHeading", entity.FontHeading);
+        parameters.Add("@FontBody", entity.FontBody);
+        parameters.Add("@ButtonRadius", entity.ButtonRadius);
+        parameters.Add("@ImageAspectRatio", entity.ImageAspectRatio);
         return await _dapperHelper.QuerySingleOrDefaultAsync<TenantSettings>(
             "sp_TenantSettings_Upsert", parameters);
     }
@@ -726,6 +738,7 @@ public class TenantSliderRepository : ITenantSliderRepository
         parameters.Add("@BgColor", entity.BgColor);         // NEW
         parameters.Add("@TextColor", entity.TextColor);       // NEW
         parameters.Add("@OverlayOpacity", entity.OverlayOpacity);  // NEW
+        parameters.Add("@IsPresetImage", entity.IsPresetImage);  // ← NEW
 
 
         var result = await _dapperHelper.ExecuteScalarAsync(
@@ -748,15 +761,142 @@ public class TenantSliderRepository : ITenantSliderRepository
         parameters.Add("@BgColor", entity.BgColor);         // NEW
         parameters.Add("@TextColor", entity.TextColor);       // NEW
         parameters.Add("@OverlayOpacity", entity.OverlayOpacity);  // NEW
+        parameters.Add("@IsPresetImage", entity.IsPresetImage);  // ← NEW
 
 
         await _dapperHelper.ExecuteAsync("sp_TenantSliders_Update", parameters);
     }
 
+    public async Task<List<TenantSlider>> GetPresetImagesAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QueryAsync<TenantSlider>(
+            "sp_TenantSliders_GetPresetImages", parameters);
+    }
     public async Task DeleteAsync(int sliderId)
     {
         var parameters = new DynamicParameters();
         parameters.Add("@SliderId", sliderId);
         await _dapperHelper.ExecuteAsync("sp_TenantSliders_Delete", parameters);
+    }
+
+
+
+}
+
+
+
+
+
+
+// =============================================
+// ✅ NEW — TenantIntegration Repository
+// =============================================
+
+/// <summary>
+/// TenantIntegration Repository Implementation
+/// </summary>
+public class TenantIntegrationRepository : ITenantIntegrationRepository
+{
+    private readonly DapperHelper _dapperHelper;
+
+    public TenantIntegrationRepository(DapperHelper dapperHelper)
+    {
+        _dapperHelper = dapperHelper;
+    }
+
+    public async Task<TenantIntegration?> GetByTenantAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QuerySingleOrDefaultAsync<TenantIntegration>(
+            "sp_TenantIntegrations_Get", parameters);
+    }
+
+    public async Task<TenantIntegration?> UpsertAsync(int tenantId, TenantIntegrationRequestDto dto)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        parameters.Add("@IsEmailEnabled", dto.IsEmailEnabled);
+        parameters.Add("@EmailProvider", dto.EmailProvider);
+        parameters.Add("@EmailApiKey", dto.EmailApiKey);
+        parameters.Add("@EmailSenderAddress", dto.EmailSenderAddress);
+        parameters.Add("@EmailSenderName", dto.EmailSenderName);
+        parameters.Add("@IsWhatsAppEnabled", dto.IsWhatsAppEnabled);
+        parameters.Add("@WhatsAppProvider", dto.WhatsAppProvider);
+        parameters.Add("@WhatsAppToken", dto.WhatsAppToken);
+        parameters.Add("@WhatsAppPhoneNumberId", dto.WhatsAppPhoneNumberId);
+        parameters.Add("@WhatsAppBusinessId", dto.WhatsAppBusinessId);
+
+        return await _dapperHelper.QuerySingleOrDefaultAsync<TenantIntegration>(
+            "sp_TenantIntegrations_Upsert", parameters);
+    }
+
+    public async Task<bool> DeleteAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        var rows = await _dapperHelper.ExecuteAsync("sp_TenantIntegrations_Delete", parameters);
+        return rows > 0;
+    }
+}
+
+// =============================================
+// ✅ NEW — NotificationLog Repository
+// =============================================
+
+/// <summary>
+/// NotificationLog Repository Implementation
+/// </summary>
+public class NotificationLogRepository : INotificationLogRepository
+{
+    private readonly DapperHelper _dapperHelper;
+
+    public NotificationLogRepository(DapperHelper dapperHelper)
+    {
+        _dapperHelper = dapperHelper;
+    }
+
+    public async Task<int> InsertAsync(NotificationLog log)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", log.TenantId);
+        parameters.Add("@OrderId", log.OrderId);
+        parameters.Add("@Channel", log.Channel);
+        parameters.Add("@EventType", log.EventType);
+        parameters.Add("@RecipientContact", log.RecipientContact);
+        parameters.Add("@Status", log.Status);
+        parameters.Add("@ErrorMessage", log.ErrorMessage);
+
+        var result = await _dapperHelper.ExecuteScalarAsync("sp_NotificationLog_Insert", parameters);
+        return result != null ? Convert.ToInt32(result) : 0;
+    }
+
+    public async Task<List<NotificationLog>> GetByTenantAsync(int tenantId, int page = 1, int pageSize = 20)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        parameters.Add("@PageNumber", page);
+        parameters.Add("@PageSize", pageSize);
+        return await _dapperHelper.QueryAsync<NotificationLog>(
+            "sp_NotificationLog_GetByTenant", parameters);
+    }
+
+    public async Task<List<NotificationLog>> GetByOrderAsync(int tenantId, int orderId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        parameters.Add("@OrderId", orderId);
+        return await _dapperHelper.QueryAsync<NotificationLog>(
+            "sp_NotificationLog_GetByOrder", parameters);
+    }
+
+    public async Task<List<NotificationLog>> GetFailedAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QueryAsync<NotificationLog>(
+            "sp_NotificationLog_GetFailed", parameters);
     }
 }

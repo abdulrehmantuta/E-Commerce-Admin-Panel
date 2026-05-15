@@ -60,6 +60,10 @@ public class ProductCreateRequestDto
     public IFormFile? Image { get; set; }   // ✅ NEW
     public int? CategoryId { get; set; }
     public int StockQty { get; set; }
+    public List<string> Sizes { get; set; } = new();
+    public List<string> Colors { get; set; } = new();
+    public string? SKU { get; set; }
+    public string? Brand { get; set; }
 }
 
 /// <summary>
@@ -74,6 +78,11 @@ public class ProductUpdateRequestDto
     public int? CategoryId { get; set; }
     public int StockQty { get; set; }
     public bool Status { get; set; }
+
+    public List<string> Sizes { get; set; } = new();
+    public List<string> Colors { get; set; } = new();
+    public string? SKU { get; set; }
+    public string? Brand { get; set; }
 }
 
 /// <summary>
@@ -179,6 +188,18 @@ public class TenantSettingsRequestDto
     public string? FooterTagline { get; set; }
     public string HeroBgColor { get; set; } = "#ffffff"; // ✅ naya
 
+    public string PromoBannerBg { get; set; } = "#1e1a14";
+    public string PromoBannerText { get; set; } = "#f5ede0";
+    public string CardBg { get; set; } = "#ffffff";
+    public string CardText { get; set; } = "#2a1f14";
+    // ✅ Naye
+    public string CardStyle { get; set; } = "minimal";
+    public string CardRadius { get; set; } = "12px";
+    public string FontHeading { get; set; } = "Cormorant Garamond";
+    public string FontBody { get; set; } = "Jost";
+    public string ButtonRadius { get; set; } = "8px";
+    public string ImageAspectRatio { get; set; } = "4/5";
+
 }
 
 
@@ -205,6 +226,7 @@ public class TenantSliderRequestDto
     public string BgColor { get; set; } = "#1a1a2e";
     public string TextColor { get; set; } = "#ffffff";
     public int OverlayOpacity { get; set; } = 50;
+    public bool IsPresetImage { get; set; } = false;  // ← NEW
 
 }
 
@@ -232,4 +254,37 @@ public class UpdateSliderRequestDto
     public string TextColor { get; set; } = "#ffffff";
     public int OverlayOpacity { get; set; } = 50;
 
+    public bool IsPresetImage { get; set; } = false;  // ← NEW
+
+}
+
+
+
+
+
+// =============================================
+// ✅ NEW — TenantIntegration Request DTOs
+// =============================================
+
+/// <summary>
+/// TenantIntegration Upsert Request
+/// </summary>
+public class TenantIntegrationRequestDto
+{
+
+    public int TenantId { get; set; }  // ✅ YE MISSING THA — AB ADD HUA
+
+    // Email
+    public bool IsEmailEnabled { get; set; } = false;
+    public string? EmailProvider { get; set; }          // "SendGrid" / "SMTP"
+    public string? EmailApiKey { get; set; }
+    public string? EmailSenderAddress { get; set; }
+    public string? EmailSenderName { get; set; }
+
+    // WhatsApp
+    public bool IsWhatsAppEnabled { get; set; } = false;
+    public string? WhatsAppProvider { get; set; }       // "Meta" / "Twilio"
+    public string? WhatsAppToken { get; set; }
+    public string? WhatsAppPhoneNumberId { get; set; }
+    public string? WhatsAppBusinessId { get; set; }
 }

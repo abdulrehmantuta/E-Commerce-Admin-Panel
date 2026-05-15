@@ -67,6 +67,13 @@ public class TenantSliderController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpGet("preset/{tenantId}")]
+    public async Task<IActionResult> GetPresetImages(int tenantId)
+    {
+        var result = await _service.GetPresetImagesAsync(tenantId);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpDelete("{sliderId}")]
     public async Task<IActionResult> Delete(int sliderId)
     {

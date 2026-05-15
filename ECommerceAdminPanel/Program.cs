@@ -29,6 +29,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddLogging();
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
+// ✅ HttpClient — TenantIntegrationService ke liye zaruri hai
+builder.Services.AddHttpClient();
+
 var jwtKey = builder.Configuration["Jwt:Key"] ?? string.Empty;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];
@@ -59,7 +62,6 @@ builder.Services.AddScoped<IDbConnection>(sp => new SqlConnection(connectionStri
 builder.Services.AddScoped(_ => new DapperHelper(connectionString!));
 
 // Repositories
-
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -73,9 +75,13 @@ builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
 builder.Services.AddScoped<ITenantSliderRepository, TenantSliderRepository>();
 
+// ✅ NAYE — YE 2 ADD HUE HAIN
+builder.Services.AddScoped<ITenantIntegrationRepository, TenantIntegrationRepository>();
+builder.Services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 
 // Services
-
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -89,6 +95,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITenantSettingsService, TenantSettingsService>();
 builder.Services.AddScoped<ITenantSliderService, TenantSliderService>();
 
+// ✅ NAYE — YE 2 ADD HUE HAIN
+builder.Services.AddScoped<ITenantIntegrationService, TenantIntegrationService>();
+builder.Services.AddScoped<INotificationLogService, NotificationLogService>();
 
 builder.Services.AddSwaggerGen(c =>
 {
@@ -136,10 +145,8 @@ app.UseSwaggerUI(options =>
 
 app.UseCors("AllowAll");
 
-// Static files
 app.UseStaticFiles();
 
-// Uploads folder
 var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
@@ -153,13 +160,11 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Angular Admin Panel routing
 app.MapGet("/admin/{**path}", async context =>
 {
     var requestPath = context.Request.Path.Value ?? "";
     var adminPath = Path.Combine(app.Environment.WebRootPath, "admin");
 
-    // File physically exist karti hai to directly serve karo
     var physicalPath = Path.Combine(app.Environment.WebRootPath,
         requestPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
 
@@ -179,15 +184,10 @@ app.MapGet("/admin/{**path}", async context =>
         return;
     }
 
-    // Angular route hai to index.html serve karo
     context.Response.ContentType = "text/html";
-    await context.Response.SendFileAsync(
-        Path.Combine(adminPath, "index.html"));
+    await context.Response.SendFileAsync(Path.Combine(adminPath, "index.html"));
 });
 
-
-
-// Angular Website routing
 app.MapGet("/website/{**path}", async context =>
 {
     var requestPath = context.Request.Path.Value ?? "";
@@ -213,10 +213,8 @@ app.MapGet("/website/{**path}", async context =>
     }
 
     context.Response.ContentType = "text/html";
-    await context.Response.SendFileAsync(
-        Path.Combine(websitePath, "index.html"));
+    await context.Response.SendFileAsync(Path.Combine(websitePath, "index.html"));
 });
-
 
 app.MapControllers();
 

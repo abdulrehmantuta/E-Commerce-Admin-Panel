@@ -1,8 +1,8 @@
 using AutoMapper;
 using ECommerceAdminPanel.DTOs.Request;
 using ECommerceAdminPanel.DTOs.Response;
+using ECommerceAdminPanel.Helper;
 using ECommerceAdminPanel.Models;
-
 namespace ECommerceAdminPanel.Config;
 
 /// <summary>
@@ -25,10 +25,23 @@ public class AutoMapperProfile : Profile
         CreateMap<Category, CategoryResponseDto>().ReverseMap();
         CreateMap<Category, CategoryRequestDto>().ReverseMap();
 
-        // Product mappings
-        CreateMap<Product, ProductResponseDto>().ReverseMap();
-        CreateMap<Product, ProductCreateRequestDto>().ReverseMap();
-        CreateMap<Product, ProductUpdateRequestDto>().ReverseMap();
+        //// Product mappings
+        //CreateMap<Product, ProductResponseDto>().ReverseMap();
+        //CreateMap<Product, ProductCreateRequestDto>().ReverseMap();
+        //CreateMap<Product, ProductUpdateRequestDto>().ReverseMap();
+
+        // Product mappings — ReverseMap() nahi, alag alag map karo
+        CreateMap<Product, ProductResponseDto>()
+            .ForMember(d => d.Sizes, o => o.MapFrom(s => JsonHelper.ToList(s.Sizes)))
+            .ForMember(d => d.Colors, o => o.MapFrom(s => JsonHelper.ToList(s.Colors)));
+
+        CreateMap<ProductCreateRequestDto, Product>()
+            .ForMember(d => d.Sizes, o => o.MapFrom(s => JsonHelper.ToJson(s.Sizes)))
+            .ForMember(d => d.Colors, o => o.MapFrom(s => JsonHelper.ToJson(s.Colors)));
+
+        CreateMap<ProductUpdateRequestDto, Product>()
+            .ForMember(d => d.Sizes, o => o.MapFrom(s => JsonHelper.ToJson(s.Sizes)))
+            .ForMember(d => d.Colors, o => o.MapFrom(s => JsonHelper.ToJson(s.Colors)));
 
         // Order mappings
         CreateMap<Order, OrderResponseDto>().ReverseMap();
@@ -64,8 +77,26 @@ public class AutoMapperProfile : Profile
         CreateMap<TenantSettingsRequestDto, TenantSettings>();
 
         // TenantSlider mappings
+        //CreateMap<TenantSlider, TenantSliderResponseDto>().ReverseMap();
+        //CreateMap<TenantSliderRequestDto, TenantSlider>();
+        //CreateMap<UpdateSliderRequestDto, TenantSlider>();
+
+
+        // TenantSlider mappings
         CreateMap<TenantSlider, TenantSliderResponseDto>().ReverseMap();
-        CreateMap<TenantSliderRequestDto, TenantSlider>();
-        CreateMap<UpdateSliderRequestDto, TenantSlider>();
+
+        CreateMap<TenantSliderRequestDto, TenantSlider>()
+            .ForMember(d => d.IsPresetImage, o => o.MapFrom(s => s.IsPresetImage));  // ← ADD
+
+        CreateMap<UpdateSliderRequestDto, TenantSlider>()
+            .ForMember(d => d.IsPresetImage, o => o.MapFrom(s => s.IsPresetImage));  // ← ADD
+
+        // ✅ NEW — TenantIntegration mappings
+        CreateMap<TenantIntegration, TenantIntegrationResponseDto>().ReverseMap();
+        CreateMap<TenantIntegrationRequestDto, TenantIntegration>();
+
+        // ✅ NEW — NotificationLog mappings
+        CreateMap<NotificationLog, NotificationLogResponseDto>().ReverseMap();
     }
 }
+

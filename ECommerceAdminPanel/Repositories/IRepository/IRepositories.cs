@@ -120,7 +120,37 @@ public interface ITenantSliderRepository
 {
     Task<List<TenantSlider>> GetActiveByTenantAsync(int tenantId);   // storefront
     Task<List<TenantSlider>> GetAllByTenantAsync(int tenantId);      // admin
+
+    Task<List<TenantSlider>> GetPresetImagesAsync(int tenantId); // ← ADD
     Task<int> AddAsync(TenantSlider entity);
     Task UpdateAsync(int sliderId, TenantSlider entity);
     Task DeleteAsync(int sliderId);
+}
+
+
+
+
+// =============================================
+// ✅ NEW — TenantIntegration Interfaces
+// =============================================
+
+/// <summary>
+/// ITenantIntegrationRepository Interface
+/// </summary>
+public interface ITenantIntegrationRepository
+{
+    Task<TenantIntegration?> GetByTenantAsync(int tenantId);
+    Task<TenantIntegration?> UpsertAsync(int tenantId, TenantIntegrationRequestDto dto);
+    Task<bool> DeleteAsync(int tenantId);
+}
+
+/// <summary>
+/// INotificationLogRepository Interface
+/// </summary>
+public interface INotificationLogRepository
+{
+    Task<int> InsertAsync(NotificationLog log);
+    Task<List<NotificationLog>> GetByTenantAsync(int tenantId, int page = 1, int pageSize = 20);
+    Task<List<NotificationLog>> GetByOrderAsync(int tenantId, int orderId);
+    Task<List<NotificationLog>> GetFailedAsync(int tenantId);
 }

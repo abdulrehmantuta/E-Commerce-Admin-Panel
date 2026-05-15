@@ -24,13 +24,11 @@
     <Folder Include="Models\" />
     <Folder Include="Interfaces\" />
     <Folder Include="Data\" />
-    <Folder Include="Helper\" />
     <Folder Include="Enums\" />
     <Folder Include="Config\" />
     <Folder Include="Repositories\IRepository\" />
     <Folder Include="Repositories\Repository\" />
     <Folder Include="Services\IServices\" />
-    <Folder Include="Services\Services\" />
   </ItemGroup>
 	
 
