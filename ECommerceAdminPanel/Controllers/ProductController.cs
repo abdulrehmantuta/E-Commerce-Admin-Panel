@@ -101,3 +101,67 @@ public async Task<ActionResult<ApiResponse<ProductResponseDto>>> CreateProduct([
         return StatusCode(result.StatusCode, result);
     }
 }
+
+
+
+
+
+/// <summary>
+/// ProductImageController
+/// /// </summary>
+
+[ApiController]
+[Route("api/[controller]")]
+public class ProductImageController : ControllerBase
+{
+    private readonly IProductImageService _service;
+    private readonly ILogger<ProductImageController> _logger;
+
+    public ProductImageController(
+        IProductImageService service,
+        ILogger<ProductImageController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
+    // GET: api/productimage/5
+    // Customer detail page → sari images lao
+    [HttpGet("{productId}")]
+    public async Task<IActionResult> GetImages(int productId)
+    {
+        _logger.LogInformation("Getting images for product: {ProductId}", productId);
+        var result = await _service.GetImagesByProductAsync(productId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    // POST: api/productimage/add
+    // Admin → image upload karo
+    [HttpPost("add")]
+    public async Task<IActionResult> AddImage([FromForm] ProductImageAddDto request)
+    {
+        _logger.LogInformation("Adding image for product: {ProductId}", request.ProductId);
+        var result = await _service.AddImageAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    // DELETE: api/productimage/8
+    // Admin → image delete karo
+    [HttpDelete("{imageId}")]
+    public async Task<IActionResult> DeleteImage(int imageId)
+    {
+        _logger.LogInformation("Deleting image: {ImageId}", imageId);
+        var result = await _service.DeleteImageAsync(imageId);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    // PUT: api/productimage/set-primary
+    // Admin → primary image set karo
+    [HttpPut("set-primary")]
+    public async Task<IActionResult> SetPrimary([FromBody] SetPrimaryImageDto request)
+    {
+        _logger.LogInformation("Setting primary: {ImageId}", request.ImageId);
+        var result = await _service.SetPrimaryAsync(request.ImageId, request.ProductId);
+        return StatusCode(result.StatusCode, result);
+    }
+}

@@ -283,6 +283,14 @@ public class OrderController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+
+    [HttpGet("tenant/{tenantId}/all")]
+    public async Task<ActionResult<ApiResponse<List<OrderResponseDto>>>> GetAllOrdersByTenant(int tenantId)
+    {
+        var result = await _service.GetAllOrdersByTenantAsync(tenantId);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpDelete("detail/{detailId}")]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteOrderDetail(int detailId)
     {

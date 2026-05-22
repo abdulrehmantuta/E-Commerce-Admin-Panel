@@ -358,6 +358,14 @@ public class OrderRepository : IOrderRepository
         return await _dapperHelper.ExecuteAsync("sp_Order_Update", parameters);
     }
 
+    // OrderRepository mein implement karo
+    public async Task<List<Order>> GetAllByTenantAsync(int tenantId)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("@TenantId", tenantId);
+        return await _dapperHelper.QueryAsync<Order>("sp_Order_GetAllByTenant", parameters);
+    }
+
     public async Task<int> DeleteAsync(int id)
     {
         var parameters = new DynamicParameters();
@@ -672,21 +680,28 @@ public class TenantSettingsRepository : ITenantSettingsRepository
         parameters.Add("@InstagramUrl", entity.InstagramUrl);
         parameters.Add("@WhatsappNumber", entity.WhatsappNumber);
         parameters.Add("@FooterTagline", entity.FooterTagline);
-        parameters.Add("@HeroBgColor", entity.HeroBgColor); // ✅ naya — baaki sab same raho
-
+        parameters.Add("@HeroBgColor", entity.HeroBgColor);
         parameters.Add("@PromoBannerBg", entity.PromoBannerBg);
         parameters.Add("@PromoBannerText", entity.PromoBannerText);
         parameters.Add("@CardBg", entity.CardBg);
         parameters.Add("@CardText", entity.CardText);
-        // ✅ Naye
         parameters.Add("@CardStyle", entity.CardStyle);
         parameters.Add("@CardRadius", entity.CardRadius);
         parameters.Add("@FontHeading", entity.FontHeading);
         parameters.Add("@FontBody", entity.FontBody);
         parameters.Add("@ButtonRadius", entity.ButtonRadius);
+        parameters.Add("@CategoryCardStyle", entity.CategoryCardStyle);
         parameters.Add("@ImageAspectRatio", entity.ImageAspectRatio);
-        return await _dapperHelper.QuerySingleOrDefaultAsync<TenantSettings>(
+
+        // ✅ Upsert karo — result ignore karo
+        await _dapperHelper.QuerySingleOrDefaultAsync<TenantSettings>(
             "sp_TenantSettings_Upsert", parameters);
+
+        // ✅ Fresh GET karo — guaranteed poora data aayega
+        var getParams = new DynamicParameters();
+        getParams.Add("@TenantId", entity.TenantId);
+        return await _dapperHelper.QuerySingleOrDefaultAsync<TenantSettings>(
+            "sp_TenantSettings_Get", getParams);
     }
 }
 
@@ -828,6 +843,8 @@ public class TenantIntegrationRepository : ITenantIntegrationRepository
         parameters.Add("@WhatsAppToken", dto.WhatsAppToken);
         parameters.Add("@WhatsAppPhoneNumberId", dto.WhatsAppPhoneNumberId);
         parameters.Add("@WhatsAppBusinessId", dto.WhatsAppBusinessId);
+        parameters.Add("@TwilioAuthToken", dto.TwilioAuthToken);  // ✅ NEW
+
 
         return await _dapperHelper.QuerySingleOrDefaultAsync<TenantIntegration>(
             "sp_TenantIntegrations_Upsert", parameters);

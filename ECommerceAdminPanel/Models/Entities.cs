@@ -66,6 +66,25 @@ public class Product
     public string? Brand { get; set; }
 }
 
+
+
+/// <summary>
+/// ProductImage
+/// </summary>
+
+
+public class ProductImage
+{
+    public int ImageId { get; set; }
+    public int ProductId { get; set; }
+    public string ImageUrl { get; set; } = string.Empty;
+    public string? ColorName { get; set; }
+    public bool IsPrimary { get; set; }
+    public int OrderNo { get; set; }
+    public DateTime CreatedDate { get; set; }
+}
+
+
 /// <summary>
 /// Order entity
 /// </summary>
@@ -81,6 +100,8 @@ public class Order
     public decimal TotalAmount { get; set; }
     public string Status { get; set; } = "Pending";
     public DateTime CreatedDate { get; set; }
+    public bool IsDeleted { get; set; } = false;        // ✅ NEW
+    public string? ProductsSummary { get; set; }
 }
 
 /// <summary>
@@ -195,6 +216,8 @@ public class TenantSettings
     // ✅ Naye card style fields
     public string CardStyle { get; set; } = "minimal";
     public string CardRadius { get; set; } = "12px";
+
+    public string CategoryCardStyle { get; set; } = "square";
     public string FontHeading { get; set; } = "Cormorant Garamond";
     public string FontBody { get; set; } = "Jost";
     public string ButtonRadius { get; set; } = "8px";
@@ -258,6 +281,8 @@ public class TenantIntegration
         public string? WhatsAppToken { get; set; }
         public string? WhatsAppPhoneNumberId { get; set; }
         public string? WhatsAppBusinessId { get; set; }
+
+         public string? TwilioAuthToken { get; set; }  // ✅ NEW
 
         public DateTime UpdatedDate { get; set; }
     }

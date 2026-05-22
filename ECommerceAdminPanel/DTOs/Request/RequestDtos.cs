@@ -85,6 +85,37 @@ public class ProductUpdateRequestDto
     public string? Brand { get; set; }
 }
 
+
+
+
+/// <summary>
+/// ProductImageAddDto Request
+/// </summary>
+/// 
+
+
+public class ProductImageAddDto
+{
+    public int ProductId { get; set; }
+    public IFormFile Image { get; set; } = null!;
+    public string? ColorName { get; set; }
+    public bool IsPrimary { get; set; } = false;
+    public int OrderNo { get; set; } = 1;
+}
+
+
+
+/// <summary>
+///SetPrimaryImageDto Request
+/// </summary>
+
+public class SetPrimaryImageDto
+{
+    public int ImageId { get; set; }
+    public int ProductId { get; set; }
+}
+
+
 /// <summary>
 /// Order Create Request
 /// </summary>
@@ -195,6 +226,8 @@ public class TenantSettingsRequestDto
     // ✅ Naye
     public string CardStyle { get; set; } = "minimal";
     public string CardRadius { get; set; } = "12px";
+
+    public string CategoryCardStyle { get; set; } = "square";
     public string FontHeading { get; set; } = "Cormorant Garamond";
     public string FontBody { get; set; } = "Jost";
     public string ButtonRadius { get; set; } = "8px";
@@ -287,4 +320,6 @@ public class TenantIntegrationRequestDto
     public string? WhatsAppToken { get; set; }
     public string? WhatsAppPhoneNumberId { get; set; }
     public string? WhatsAppBusinessId { get; set; }
+    public string? TwilioAuthToken { get; set; }  // ✅ NEW
+
 }

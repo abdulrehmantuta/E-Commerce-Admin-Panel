@@ -197,6 +197,192 @@ public class ProductService : IProductService
     }
 }
 
+
+
+/// <summary>
+/// ProductImageService  Implementation
+/// </summary>
+
+
+
+public class ProductImageService : IProductImageService
+{
+    private readonly IProductImageRepository _repo;
+    private readonly IWebHostEnvironment _env;
+    private readonly ILogger<ProductImageService> _logger;
+
+    public ProductImageService(
+        IProductImageRepository repo,
+        IWebHostEnvironment env,
+        ILogger<ProductImageService> logger)
+    {
+        _repo = repo;
+        _env = env;
+        _logger = logger;
+    }
+
+    // Sari images lao
+    public async Task<ApiResponse<List<ProductImageResponseDto>>> GetImagesByProductAsync(int productId)
+    {
+        try
+        {
+            var images = await _repo.GetByProductAsync(productId);
+
+            var dto = images.Select(i => new ProductImageResponseDto
+            {
+                ImageId = i.ImageId,
+                ProductId = i.ProductId,
+                ImageUrl = i.ImageUrl,
+                ColorName = i.ColorName,
+                IsPrimary = i.IsPrimary,
+                OrderNo = i.OrderNo,
+                CreatedDate = i.CreatedDate
+            }).ToList();
+
+            return new ApiResponse<List<ProductImageResponseDto>>
+            {
+                Success = true,
+                StatusCode = 200,
+                Message = "Images fetched successfully",
+                Data = dto
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting images for product {ProductId}", productId);
+            return new ApiResponse<List<ProductImageResponseDto>>
+            {
+                Success = false,
+                StatusCode = 500,
+                Message = "Error fetching images"
+            };
+        }
+    }
+
+    // Image add karo
+    public async Task<ApiResponse<ProductImageResponseDto>> AddImageAsync(ProductImageAddDto request)
+    {
+        try
+        {
+            // File server pe save karo
+            var imageUrl = await SaveImageAsync(request.Image, request.ProductId);
+
+            var entity = new ProductImage
+            {
+                ProductId = request.ProductId,
+                ImageUrl = imageUrl,
+                ColorName = request.ColorName,
+                IsPrimary = request.IsPrimary,
+                OrderNo = request.OrderNo
+            };
+
+            var newId = await _repo.AddImageAsync(entity);
+
+            return new ApiResponse<ProductImageResponseDto>
+            {
+                Success = true,
+                StatusCode = 201,
+                Message = "Image added successfully",
+                Data = new ProductImageResponseDto
+                {
+                    ImageId = newId,
+                    ProductId = request.ProductId,
+                    ImageUrl = imageUrl,
+                    ColorName = request.ColorName,
+                    IsPrimary = request.IsPrimary,
+                    OrderNo = request.OrderNo,
+                    CreatedDate = DateTime.Now
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding image for product {ProductId}", request.ProductId);
+            return new ApiResponse<ProductImageResponseDto>
+            {
+                Success = false,
+                StatusCode = 500,
+                Message = "Error adding image"
+            };
+        }
+    }
+
+    // Image delete karo
+    public async Task<ApiResponse<bool>> DeleteImageAsync(int imageId)
+    {
+        try
+        {
+            var result = await _repo.DeleteImageAsync(imageId);
+            return new ApiResponse<bool>
+            {
+                Success = result,
+                StatusCode = result ? 200 : 404,
+                Message = result ? "Image deleted" : "Image not found",
+                Data = result
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting image {ImageId}", imageId);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                StatusCode = 500,
+                Message = "Error deleting image"
+            };
+        }
+    }
+
+    // Primary set karo
+    public async Task<ApiResponse<bool>> SetPrimaryAsync(int imageId, int productId)
+    {
+        try
+        {
+            var result = await _repo.SetPrimaryAsync(imageId, productId);
+            return new ApiResponse<bool>
+            {
+                Success = result,
+                StatusCode = result ? 200 : 404,
+                Message = result ? "Primary image updated" : "Image not found",
+                Data = result
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting primary image {ImageId}", imageId);
+            return new ApiResponse<bool>
+            {
+                Success = false,
+                StatusCode = 500,
+                Message = "Error setting primary image"
+            };
+        }
+    }
+
+    // ─── Private: File save karo server pe ───────────────────────────
+    private async Task<string> SaveImageAsync(IFormFile file, int productId)
+    {
+        // wwwroot/images/products/5/
+        var folder = Path.Combine(_env.WebRootPath, "images", "products", productId.ToString());
+        Directory.CreateDirectory(folder);
+
+        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        var filePath = Path.Combine(folder, fileName);
+
+        using var stream = new FileStream(filePath, FileMode.Create);
+        await file.CopyToAsync(stream);
+
+        // Frontend ke liye URL
+        return $"/images/products/{productId}/{fileName}";
+    }
+}
+
+
+
+/// <summary>
+///CategoryService
+/// </summary>
+
 public class CategoryService : ICategoryService
     {
         private readonly ICategoryRepository _repository;
@@ -551,28 +737,25 @@ public class CategoryService : ICategoryService
 //        }
 //    }
 //}
-
-
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderDetailRepository _detailRepository;
     private readonly IMapper _mapper;
-    private readonly INotificationService _notificationService; // ✅ NEW
+    private readonly INotificationService _notificationService;
 
     public OrderService(
         IOrderRepository orderRepository,
         IOrderDetailRepository detailRepository,
         IMapper mapper,
-        INotificationService notificationService) // ✅ NEW
+        INotificationService notificationService)
     {
         _orderRepository = orderRepository;
         _detailRepository = detailRepository;
         _mapper = mapper;
-        _notificationService = notificationService; // ✅ NEW
+        _notificationService = notificationService;
     }
 
-    // ✅ UPDATED — notification call add hua
     public async Task<ApiResponse<OrderResponseDto>> CreateOrderAsync(OrderCreateRequestDto request)
     {
         try
@@ -587,11 +770,7 @@ public class OrderService : IOrderService
             var created = await _orderRepository.GetByIdAsync(id);
             var response = _mapper.Map<OrderResponseDto>(created);
 
-            // ✅ Order create hone ke baad notification bhejo — fire & forget
-            //_ = Task.Run(() => _notificationService.SendOrderCreatedAsync(created!));
-
-            await _notificationService.SendOrderCreatedAsync(created!); // ✅ direct await
-
+            await _notificationService.SendOrderCreatedAsync(created!);
 
             return ApiResponse<OrderResponseDto>.SuccessResponse(response, "Order created successfully", 201);
         }
@@ -642,7 +821,22 @@ public class OrderService : IOrderService
         }
     }
 
-    // ✅ UPDATED — old status save karke notification bhejo
+    // ✅ NEW — GetAllByTenant (no pagination)
+    public async Task<ApiResponse<List<OrderResponseDto>>> GetAllOrdersByTenantAsync(int tenantId)
+    {
+        try
+        {
+            var orders = await _orderRepository.GetAllByTenantAsync(tenantId);
+            var response = _mapper.Map<List<OrderResponseDto>>(orders);
+            return ApiResponse<List<OrderResponseDto>>.SuccessResponse(response, "Orders retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<List<OrderResponseDto>>.ErrorResponse($"Error: {ex.Message}", 500);
+        }
+    }
+
+    // ✅ UPDATED — Status change par notification
     public async Task<ApiResponse<bool>> UpdateOrderAsync(int orderId, OrderUpdateRequestDto request)
     {
         try
@@ -651,25 +845,21 @@ public class OrderService : IOrderService
             if (existing == null)
                 return ApiResponse<bool>.ErrorResponse("Order not found", 404);
 
-            var oldStatus = existing.Status; // ✅ purana status save karo
-
+            var oldStatus = existing.Status;
             _mapper.Map(request, existing);
             var result = await _orderRepository.UpdateAsync(orderId, existing);
 
             if (result <= 0)
                 return ApiResponse<bool>.ErrorResponse("Failed to update order", 400);
 
-            // ✅ Sirf tab bhejo jab status change hua ho
             if (oldStatus != existing.Status)
-                //_ = Task.Run(() => _notificationService.SendOrderStatusUpdatedAsync(existing, oldStatus));
-                await _notificationService.SendOrderStatusUpdatedAsync(existing, oldStatus); // ✅ direct await
-
+                await _notificationService.SendOrderStatusUpdatedAsync(existing, oldStatus);
 
             return ApiResponse<bool>.SuccessResponse(true, "Order updated successfully");
         }
         catch (Exception ex)
         {
-            return ApiResponse<bool>.ErrorResponse($"Error updating order: {ex.Message}", 500);
+            return ApiResponse<bool>.ErrorResponse($"Error: {ex.Message}", 500);
         }
     }
 
@@ -720,7 +910,6 @@ public class OrderService : IOrderService
         {
             var details = await _detailRepository.GetByOrderAsync(orderId);
             var response = _mapper.Map<List<OrderDetailResponseDto>>(details);
-
             return ApiResponse<List<OrderDetailResponseDto>>.SuccessResponse(response, "Order details retrieved successfully");
         }
         catch (Exception ex)
@@ -745,6 +934,7 @@ public class OrderService : IOrderService
         }
     }
 }
+
 
 /// <summary>
 /// Tenant Service Implementation
@@ -2004,6 +2194,223 @@ public class TenantSliderService : ITenantSliderService
 /// TenantIntegrationService Implementation
 /// Email + WhatsApp settings save/get + test
 /// </summary>
+/// // =============================================
+// ✅ TenantIntegrationService — Full Updated
+// =============================================
+
+
+
+//public class TenantIntegrationService : ITenantIntegrationService
+//{
+//    private readonly ITenantIntegrationRepository _repository;
+//    private readonly IMapper _mapper;
+//    private readonly IHttpClientFactory _httpClientFactory;
+
+//    public TenantIntegrationService(
+//        ITenantIntegrationRepository repository,
+//        IMapper mapper,
+//        IHttpClientFactory httpClientFactory)
+//    {
+//        _repository = repository;
+//        _mapper = mapper;
+//        _httpClientFactory = httpClientFactory;
+//    }
+
+//    public async Task<ApiResponse<TenantIntegrationResponseDto>> GetByTenantAsync(int tenantId)
+//    {
+//        try
+//        {
+//            var integration = await _repository.GetByTenantAsync(tenantId);
+
+//            if (integration == null)
+//                integration = new TenantIntegration { TenantId = tenantId };
+
+//            var response = _mapper.Map<TenantIntegrationResponseDto>(integration);
+
+//            // Sensitive keys mask karo
+//            if (!string.IsNullOrEmpty(response.EmailApiKey))
+//                response.EmailApiKey = "****";
+//            if (!string.IsNullOrEmpty(response.WhatsAppToken))
+//                response.WhatsAppToken = "****";
+//            if (!string.IsNullOrEmpty(response.TwilioAuthToken))
+//                response.TwilioAuthToken = "****";
+
+//            return ApiResponse<TenantIntegrationResponseDto>.SuccessResponse(response);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<TenantIntegrationResponseDto>.ErrorResponse(ex.Message, 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> UpsertAsync(TenantIntegrationRequestDto request)
+//    {
+//        try
+//        {
+//            // ✅ Masked values save mat karo
+//            if (request.EmailApiKey == "****") request.EmailApiKey = null;
+//            if (request.WhatsAppToken == "****") request.WhatsAppToken = null;
+//            if (request.TwilioAuthToken == "****") request.TwilioAuthToken = null;
+
+//            var result = await _repository.UpsertAsync(request.TenantId, request);
+//            if (result == null)
+//                return ApiResponse<bool>.ErrorResponse("Failed to save integrations", 400);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Integration settings saved!");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse(ex.Message, 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> DeleteAsync(int tenantId)
+//    {
+//        try
+//        {
+//            var deleted = await _repository.DeleteAsync(tenantId);
+//            if (!deleted)
+//                return ApiResponse<bool>.ErrorResponse("No integration found to delete", 404);
+
+//            return ApiResponse<bool>.SuccessResponse(true, "Integration settings deleted!");
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse(ex.Message, 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> TestEmailAsync(int tenantId, string toEmail)
+//    {
+//        try
+//        {
+//            var integration = await _repository.GetByTenantAsync(tenantId);
+
+//            if (integration == null || !integration.IsEmailEnabled)
+//                return ApiResponse<bool>.ErrorResponse("Email integration not configured or disabled", 400);
+
+//            if (string.IsNullOrEmpty(integration.EmailApiKey))
+//                return ApiResponse<bool>.ErrorResponse("Email API Key missing", 400);
+
+//            var client = _httpClientFactory.CreateClient();
+//            client.DefaultRequestHeaders.Authorization =
+//                new AuthenticationHeaderValue("Bearer", integration.EmailApiKey);
+
+//            var payload = new
+//            {
+//                personalizations = new[]
+//                {
+//                    new { to = new[] { new { email = toEmail } } }
+//                },
+//                from = new
+//                {
+//                    email = integration.EmailSenderAddress ?? "noreply@test.com",
+//                    name = integration.EmailSenderName ?? "Test"
+//                },
+//                subject = "Test Email from your Store",
+//                content = new[]
+//                {
+//                    new { type = "text/plain", value = "Yeh ek test email hai. Aapka email integration kaam kar raha hai!" }
+//                }
+//            };
+
+//            var json = JsonSerializer.Serialize(payload);
+//            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+//            var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", content);
+
+//            if (response.IsSuccessStatusCode)
+//                return ApiResponse<bool>.SuccessResponse(true, $"Test email sent to {toEmail}!");
+
+//            var error = await response.Content.ReadAsStringAsync();
+//            return ApiResponse<bool>.ErrorResponse($"SendGrid error: {error}", 400);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error sending test email: {ex.Message}", 500);
+//        }
+//    }
+
+//    public async Task<ApiResponse<bool>> TestWhatsAppAsync(int tenantId, string toPhone)
+//    {
+//        try
+//        {
+//            var integration = await _repository.GetByTenantAsync(tenantId);
+
+//            if (integration == null || !integration.IsWhatsAppEnabled)
+//                return ApiResponse<bool>.ErrorResponse("WhatsApp not configured or disabled", 400);
+
+//            // ✅ TWILIO
+//            if (integration.WhatsAppProvider == "Twilio")
+//            {
+//                if (string.IsNullOrEmpty(integration.WhatsAppToken))
+//                    return ApiResponse<bool>.ErrorResponse("Twilio Account SID missing", 400);
+
+//                if (string.IsNullOrEmpty(integration.TwilioAuthToken))
+//                    return ApiResponse<bool>.ErrorResponse("Twilio Auth Token missing", 400);
+
+//                var formattedPhone = $"whatsapp:+{toPhone.Replace("+", "").Replace(" ", "").Replace("-", "")}";
+//                var url = $"https://api.twilio.com/2010-04-01/Accounts/{integration.WhatsAppToken}/Messages.json";
+
+//                var client = _httpClientFactory.CreateClient();
+//                var credentials = Convert.ToBase64String(
+//                    System.Text.Encoding.UTF8.GetBytes(
+//                        $"{integration.WhatsAppToken}:{integration.TwilioAuthToken}"));
+//                client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
+
+//                var formData = new FormUrlEncodedContent(new[]
+//                {
+//                    new KeyValuePair<string, string>("From", "whatsapp:+14155238886"),
+//                    new KeyValuePair<string, string>("To",   formattedPhone),
+//                    new KeyValuePair<string, string>("Body", "✅ Test message! WhatsApp integration is working perfectly.")
+//                });
+
+//                var response = await client.PostAsync(url, formData);
+
+//                if (response.IsSuccessStatusCode)
+//                    return ApiResponse<bool>.SuccessResponse(true, $"✅ Test WhatsApp sent to {toPhone}!");
+
+//                var error = await response.Content.ReadAsStringAsync();
+//                return ApiResponse<bool>.ErrorResponse($"Twilio error: {error}", 400);
+//            }
+
+//            // ✅ META
+//            if (string.IsNullOrEmpty(integration.WhatsAppToken))
+//                return ApiResponse<bool>.ErrorResponse("WhatsApp Token missing", 400);
+
+//            if (string.IsNullOrEmpty(integration.WhatsAppPhoneNumberId))
+//                return ApiResponse<bool>.ErrorResponse("WhatsApp Phone Number ID missing", 400);
+
+//            var metaClient = _httpClientFactory.CreateClient();
+//            metaClient.DefaultRequestHeaders.Authorization =
+//                new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
+
+//            var metaPayload = new
+//            {
+//                messaging_product = "whatsapp",
+//                to = toPhone.Replace("+", "").Replace(" ", ""),
+//                type = "text",
+//                text = new { body = "✅ Test message! WhatsApp integration is working." }
+//            };
+
+//            var metaJson = JsonSerializer.Serialize(metaPayload);
+//            var metaContent = new StringContent(metaJson, System.Text.Encoding.UTF8, "application/json");
+//            var metaUrl = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
+//            var metaResponse = await metaClient.PostAsync(metaUrl, metaContent);
+
+//            if (metaResponse.IsSuccessStatusCode)
+//                return ApiResponse<bool>.SuccessResponse(true, $"✅ Test WhatsApp sent to {toPhone}!");
+
+//            var metaError = await metaResponse.Content.ReadAsStringAsync();
+//            return ApiResponse<bool>.ErrorResponse($"Meta error: {metaError}", 400);
+//        }
+//        catch (Exception ex)
+//        {
+//            return ApiResponse<bool>.ErrorResponse($"Error: {ex.Message}", 500);
+//        }
+//    }
+//}
+
+
 public class TenantIntegrationService : ITenantIntegrationService
 {
     private readonly ITenantIntegrationRepository _repository;
@@ -2026,17 +2433,18 @@ public class TenantIntegrationService : ITenantIntegrationService
         {
             var integration = await _repository.GetByTenantAsync(tenantId);
 
-            // Agar koi settings nahi hain to empty defaults return karo
             if (integration == null)
                 integration = new TenantIntegration { TenantId = tenantId };
 
             var response = _mapper.Map<TenantIntegrationResponseDto>(integration);
 
-            // Sensitive keys mask karo — frontend pe *** dikhao
+            // Sensitive keys mask karo
             if (!string.IsNullOrEmpty(response.EmailApiKey))
                 response.EmailApiKey = "****";
             if (!string.IsNullOrEmpty(response.WhatsAppToken))
                 response.WhatsAppToken = "****";
+            if (!string.IsNullOrEmpty(response.TwilioAuthToken))
+                response.TwilioAuthToken = "****";
 
             return ApiResponse<TenantIntegrationResponseDto>.SuccessResponse(response);
         }
@@ -2050,6 +2458,11 @@ public class TenantIntegrationService : ITenantIntegrationService
     {
         try
         {
+            // ✅ Masked values save mat karo
+            if (request.EmailApiKey == "****") request.EmailApiKey = null;
+            if (request.WhatsAppToken == "****") request.WhatsAppToken = null;
+            if (request.TwilioAuthToken == "****") request.TwilioAuthToken = null;
+
             var result = await _repository.UpsertAsync(request.TenantId, request);
             if (result == null)
                 return ApiResponse<bool>.ErrorResponse("Failed to save integrations", 400);
@@ -2078,9 +2491,6 @@ public class TenantIntegrationService : ITenantIntegrationService
         }
     }
 
-    /// <summary>
-    /// Test Email — SendGrid API se real email bhejo
-    /// </summary>
     public async Task<ApiResponse<bool>> TestEmailAsync(int tenantId, string toEmail)
     {
         try
@@ -2093,7 +2503,6 @@ public class TenantIntegrationService : ITenantIntegrationService
             if (string.IsNullOrEmpty(integration.EmailApiKey))
                 return ApiResponse<bool>.ErrorResponse("Email API Key missing", 400);
 
-            // SendGrid API call
             var client = _httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", integration.EmailApiKey);
@@ -2118,7 +2527,6 @@ public class TenantIntegrationService : ITenantIntegrationService
 
             var json = JsonSerializer.Serialize(payload);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
             var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", content);
 
             if (response.IsSuccessStatusCode)
@@ -2133,9 +2541,6 @@ public class TenantIntegrationService : ITenantIntegrationService
         }
     }
 
-    /// <summary>
-    /// Test WhatsApp — Meta Cloud API se real message bhejo
-    /// </summary>
     public async Task<ApiResponse<bool>> TestWhatsAppAsync(int tenantId, string toPhone)
     {
         try
@@ -2143,45 +2548,82 @@ public class TenantIntegrationService : ITenantIntegrationService
             var integration = await _repository.GetByTenantAsync(tenantId);
 
             if (integration == null || !integration.IsWhatsAppEnabled)
-                return ApiResponse<bool>.ErrorResponse("WhatsApp integration not configured or disabled", 400);
+                return ApiResponse<bool>.ErrorResponse("WhatsApp not configured or disabled", 400);
 
+            // ✅ TWILIO
+            if (integration.WhatsAppProvider == "Twilio")
+            {
+                if (string.IsNullOrEmpty(integration.WhatsAppToken))
+                    return ApiResponse<bool>.ErrorResponse("Twilio Account SID missing", 400);
+
+                if (string.IsNullOrEmpty(integration.TwilioAuthToken))
+                    return ApiResponse<bool>.ErrorResponse("Twilio Auth Token missing", 400);
+
+                var formattedPhone = $"whatsapp:+{toPhone.Replace("+", "").Replace(" ", "").Replace("-", "")}";
+                var url = $"https://api.twilio.com/2010-04-01/Accounts/{integration.WhatsAppToken}/Messages.json";
+
+                var client = _httpClientFactory.CreateClient();
+                var credentials = Convert.ToBase64String(
+                    System.Text.Encoding.UTF8.GetBytes(
+                        $"{integration.WhatsAppToken}:{integration.TwilioAuthToken}"));
+                client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
+
+                var formData = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("From", "whatsapp:+14155238886"),
+                    new KeyValuePair<string, string>("To",   formattedPhone),
+                    new KeyValuePair<string, string>("Body", "✅ Test message! WhatsApp integration is working perfectly.")
+                });
+
+                var response = await client.PostAsync(url, formData);
+
+                if (response.IsSuccessStatusCode)
+                    return ApiResponse<bool>.SuccessResponse(true, $"✅ Test WhatsApp sent to {toPhone}!");
+
+                var error = await response.Content.ReadAsStringAsync();
+                return ApiResponse<bool>.ErrorResponse($"Twilio error: {error}", 400);
+            }
+
+            // ✅ META
             if (string.IsNullOrEmpty(integration.WhatsAppToken))
                 return ApiResponse<bool>.ErrorResponse("WhatsApp Token missing", 400);
 
             if (string.IsNullOrEmpty(integration.WhatsAppPhoneNumberId))
                 return ApiResponse<bool>.ErrorResponse("WhatsApp Phone Number ID missing", 400);
 
-            // Meta Cloud API call
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization =
+            var metaClient = _httpClientFactory.CreateClient();
+            metaClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
 
-            var payload = new
+            var metaPayload = new
             {
                 messaging_product = "whatsapp",
-                to = toPhone,
+                to = toPhone.Replace("+", "").Replace(" ", ""),
                 type = "text",
-                text = new { body = "Yeh ek test message hai. Aapka WhatsApp integration kaam kar raha hai!" }
+                text = new { body = "✅ Test message! WhatsApp integration is working." }
             };
 
-            var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var metaJson = JsonSerializer.Serialize(metaPayload);
+            var metaContent = new StringContent(metaJson, System.Text.Encoding.UTF8, "application/json");
+            var metaUrl = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
+            var metaResponse = await metaClient.PostAsync(metaUrl, metaContent);
 
-            var url = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
-            var response = await client.PostAsync(url, content);
+            // ✅ META RESPONSE BODY DEKHO — asli error ya success yahan hoga
+            var metaResponseBody = await metaResponse.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
-                return ApiResponse<bool>.SuccessResponse(true, $"Test WhatsApp sent to {toPhone}!");
+            if (metaResponse.IsSuccessStatusCode)
+                return ApiResponse<bool>.SuccessResponse(true, $"✅ Meta Response: {metaResponseBody}");
 
-            var error = await response.Content.ReadAsStringAsync();
-            return ApiResponse<bool>.ErrorResponse($"Meta API error: {error}", 400);
+            return ApiResponse<bool>.ErrorResponse($"Meta error: {metaResponseBody}", 400);
         }
         catch (Exception ex)
         {
-            return ApiResponse<bool>.ErrorResponse($"Error sending test WhatsApp: {ex.Message}", 500);
+            return ApiResponse<bool>.ErrorResponse($"Error: {ex.Message}", 500);
         }
     }
 }
+
+
 
 /// <summary>
 /// NotificationLogService Implementation
@@ -2466,7 +2908,6 @@ public class NotificationLogService : INotificationLogService
 //}
 
 
-
 public class NotificationService : INotificationService
 {
     private readonly ITenantIntegrationRepository _integrationRepo;
@@ -2530,54 +2971,73 @@ public class NotificationService : INotificationService
         var integration = await _integrationRepo.GetByTenantAsync(order.TenantId);
         if (integration == null) return;
 
-        var emoji = order.Status switch
+        // ✅ Har status ka alag message
+        var (emoji, statusMsg) = order.Status switch
         {
-            "Confirmed" => "✅",
-            "Shipped" => "🚚",
-            "Delivered" => "🎉",
-            "Cancelled" => "❌",
-            _ => "📦"
+            "Confirmed" => ("✅", "Your order has been confirmed!"),
+            "Processing" => ("⚙️", "Your order is being processed."),
+            "Packed" => ("📦", "Your order has been packed and is ready for pickup."),
+            "Shipped" => ("🚚", "Your order has been shipped!"),
+            "Out For Delivery" => ("🛵", "Your order is out for delivery. Please be available!"),
+            "Delivered" => ("🎉", "Your order has been delivered. Enjoy!"),
+            "Completed" => ("✔️", "Your order is completed. Thank you for shopping!"),
+            "Cancelled" => ("❌", "Your order has been cancelled."),
+            "Returned" => ("↩️", "Your return request has been processed."),
+            "Refunded" => ("💰", "Your refund has been initiated."),
+            "Failed" => ("🚫", "Your order has failed. Please contact support."),
+            _ => ("📋", "Your order status has been updated.")
         };
 
+        // ✅ Email notification
         if (integration.IsEmailEnabled && !string.IsNullOrEmpty(order.CustomerEmail))
         {
-            var subject = $"{emoji} Order #{order.OrderId} Status Updated — {order.Status}";
+            var subject = $"{emoji} Order #{order.OrderId} — {order.Status}";
             var body = $@"
-                <div style='font-family:Arial;max-width:600px;margin:auto'>
-                    <h2 style='color:#ea6c2d'>{emoji} Order Status Updated</h2>
-                    <p>Dear <strong>{order.CustomerName}</strong>,</p>
-                    <p>Your order status has been updated.</p>
-                    <table style='width:100%;border-collapse:collapse'>
-                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Order ID</b></td>
-                            <td style='padding:8px;border:1px solid #ddd'>#{order.OrderId}</td></tr>
-                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Previous Status</b></td>
-                            <td style='padding:8px;border:1px solid #ddd'>{oldStatus}</td></tr>
-                        <tr><td style='padding:8px;border:1px solid #ddd'><b>New Status</b></td>
-                            <td style='padding:8px;border:1px solid #ddd;color:green'><b>{order.Status}</b></td></tr>
-                        <tr><td style='padding:8px;border:1px solid #ddd'><b>Total Amount</b></td>
-                            <td style='padding:8px;border:1px solid #ddd'>Rs. {order.TotalAmount:N0}</td></tr>
-                    </table>
-                    <p style='margin-top:20px'>Thank you for shopping with us!</p>
-                </div>";
+            <div style='font-family:Arial;max-width:600px;margin:auto'>
+                <h2 style='color:#ea6c2d'>{emoji} Order Status Updated</h2>
+                <p>Dear <strong>{order.CustomerName}</strong>,</p>
+                <p>{statusMsg}</p>
+                <table style='width:100%;border-collapse:collapse'>
+                    <tr>
+                        <td style='padding:8px;border:1px solid #ddd'><b>Order ID</b></td>
+                        <td style='padding:8px;border:1px solid #ddd'>#{order.OrderId}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding:8px;border:1px solid #ddd'><b>Previous Status</b></td>
+                        <td style='padding:8px;border:1px solid #ddd'>{oldStatus}</td>
+                    </tr>
+                    <tr>
+                        <td style='padding:8px;border:1px solid #ddd'><b>New Status</b></td>
+                        <td style='padding:8px;border:1px solid #ddd;color:green'><b>{order.Status}</b></td>
+                    </tr>
+                    <tr>
+                        <td style='padding:8px;border:1px solid #ddd'><b>Total Amount</b></td>
+                        <td style='padding:8px;border:1px solid #ddd'>Rs. {order.TotalAmount:N0}</td>
+                    </tr>
+                </table>
+                <p style='margin-top:20px'>Thank you for shopping with us!</p>
+            </div>";
 
             await SendEmailAsync(integration, order.CustomerEmail, subject, body,
-                order.TenantId, order.OrderId, NotificationEvents.OrderConfirmed);
+                order.TenantId, order.OrderId, order.Status);
         }
 
+        // ✅ WhatsApp notification
         if (integration.IsWhatsAppEnabled && !string.IsNullOrEmpty(order.CustomerPhone))
         {
             var message = $"{emoji} *Order Status Updated!*\n\n" +
-                         $"Hello *{order.CustomerName}*,\n" +
-                         $"Order *#{order.OrderId}* status changed:\n" +
+                         $"Hello *{order.CustomerName}*,\n\n" +
+                         $"{statusMsg}\n\n" +
+                         $"🆔 Order: *#{order.OrderId}*\n" +
                          $"📌 Previous: *{oldStatus}*\n" +
-                         $"✅ New: *{order.Status}*\n\n" +
-                         $"Thank you!";
+                         $"✅ New Status: *{order.Status}*\n" +
+                         $"💰 Amount: *Rs. {order.TotalAmount:N0}*\n\n" +
+                         $"Thank you for shopping with us! 🛍️";
 
             await SendWhatsAppAsync(integration, order.CustomerPhone, message,
-                order.TenantId, order.OrderId, NotificationEvents.OrderConfirmed);
+                order.TenantId, order.OrderId, order.Status);
         }
     }
-
     private async Task SendEmailAsync(
         TenantIntegration integration,
         string toEmail, string subject, string body,
@@ -2616,8 +3076,7 @@ public class NotificationService : INotificationService
             var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", content);
 
             log.Status = response.IsSuccessStatusCode
-                ? NotificationStatus.Sent
-                : NotificationStatus.Failed;
+                ? NotificationStatus.Sent : NotificationStatus.Failed;
 
             if (!response.IsSuccessStatusCode)
                 log.ErrorMessage = await response.Content.ReadAsStringAsync();
@@ -2633,6 +3092,7 @@ public class NotificationService : INotificationService
         }
     }
 
+    // ✅ UPDATED — Twilio + Meta dono support
     private async Task SendWhatsAppAsync(
         TenantIntegration integration,
         string toPhone, string message,
@@ -2651,28 +3111,57 @@ public class NotificationService : INotificationService
         try
         {
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
 
-            var payload = new
+            // ✅ TWILIO
+            if (integration.WhatsAppProvider == "Twilio")
             {
-                messaging_product = "whatsapp",
-                to = toPhone,
-                type = "text",
-                text = new { body = message }
-            };
+                var formattedPhone = $"whatsapp:+{toPhone.Replace("+", "").Replace(" ", "").Replace("-", "")}";
+                var url = $"https://api.twilio.com/2010-04-01/Accounts/{integration.WhatsAppToken}/Messages.json";
 
-            var json = JsonSerializer.Serialize(payload);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var url = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
-            var response = await client.PostAsync(url, content);
+                var credentials = Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes(
+                        $"{integration.WhatsAppToken}:{integration.TwilioAuthToken}"));
+                client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
 
-            log.Status = response.IsSuccessStatusCode
-                ? NotificationStatus.Sent
-                : NotificationStatus.Failed;
+                var formData = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("From", "whatsapp:+14155238886"),
+                    new KeyValuePair<string, string>("To",   formattedPhone),
+                    new KeyValuePair<string, string>("Body", message)
+                });
 
-            if (!response.IsSuccessStatusCode)
-                log.ErrorMessage = await response.Content.ReadAsStringAsync();
+                var response = await client.PostAsync(url, formData);
+                log.Status = response.IsSuccessStatusCode
+                    ? NotificationStatus.Sent : NotificationStatus.Failed;
+
+                if (!response.IsSuccessStatusCode)
+                    log.ErrorMessage = await response.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                // ✅ META
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", integration.WhatsAppToken);
+
+                var payload = new
+                {
+                    messaging_product = "whatsapp",
+                    to = toPhone.Replace("+", "").Replace(" ", ""),
+                    type = "text",
+                    text = new { body = message }
+                };
+
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var url = $"https://graph.facebook.com/v18.0/{integration.WhatsAppPhoneNumberId}/messages";
+                var response = await client.PostAsync(url, content);
+
+                log.Status = response.IsSuccessStatusCode
+                    ? NotificationStatus.Sent : NotificationStatus.Failed;
+
+                if (!response.IsSuccessStatusCode)
+                    log.ErrorMessage = await response.Content.ReadAsStringAsync();
+            }
         }
         catch (Exception ex)
         {

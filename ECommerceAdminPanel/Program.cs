@@ -14,7 +14,14 @@ using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+//builder.Services.AddControllers();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
+
 
 builder.Services.AddCors(options =>
 {
@@ -74,6 +81,8 @@ builder.Services.AddScoped<ISectionDataRepository, SectionDataRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
 builder.Services.AddScoped<ITenantSliderRepository, TenantSliderRepository>();
+builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
+
 
 // ✅ NAYE — YE 2 ADD HUE HAIN
 builder.Services.AddScoped<ITenantIntegrationRepository, TenantIntegrationRepository>();
@@ -94,6 +103,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITenantSettingsService, TenantSettingsService>();
 builder.Services.AddScoped<ITenantSliderService, TenantSliderService>();
+builder.Services.AddScoped<IProductImageService, ProductImageService>();
 
 // ✅ NAYE — YE 2 ADD HUE HAIN
 builder.Services.AddScoped<ITenantIntegrationService, TenantIntegrationService>();

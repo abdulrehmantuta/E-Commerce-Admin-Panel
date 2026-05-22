@@ -1,7 +1,8 @@
 namespace ECommerceAdminPanel.Repositories.IRepository;
 using ECommerceAdminPanel.DTOs.Request; 
-using ECommerceAdminPanel.Models;
 using ECommerceAdminPanel.DTOs.Response;
+using ECommerceAdminPanel.Models;
+using global::ECommerceAdminPanel.Models;
 
 /// <summary>
 /// Base repository interface
@@ -24,6 +25,20 @@ public interface IProductRepository : IBaseRepository<Product>
     Task<List<Product>> GetByCategoryAsync(int categoryId, int pageNumber = 1, int pageSize = 10);
 }
 
+
+
+/// <summary>
+/// IProductImageRepository  Interface
+/// </summary>
+/// 
+public interface IProductImageRepository
+{
+    Task<List<ProductImage>> GetByProductAsync(int productId);
+    Task<int> AddImageAsync(ProductImage image);
+    Task<bool> DeleteImageAsync(int imageId);
+    Task<bool> SetPrimaryAsync(int imageId, int productId);
+}
+
 /// <summary>
 /// Category Repository Interface
 /// </summary>
@@ -40,6 +55,9 @@ public interface IOrderRepository : IBaseRepository<Order>
     Task<List<Order>> GetByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10);
 
     Task<List<Order>> GetByUserAsync(int tenantId, int customerId); // ✅ add karo
+
+    // IOrderRepository mein add karo
+    Task<List<Order>> GetAllByTenantAsync(int tenantId);
 
 }
 

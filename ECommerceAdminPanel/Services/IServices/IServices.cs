@@ -26,6 +26,21 @@ public interface IProductService
     Task<ApiResponse<bool>> DeleteProductAsync(int productId);
 }
 
+
+
+/// <summary>
+/// IProductImageService  Interface
+/// </summary>
+
+public interface IProductImageService
+{
+    Task<ApiResponse<List<ProductImageResponseDto>>> GetImagesByProductAsync(int productId);
+    Task<ApiResponse<ProductImageResponseDto>> AddImageAsync(ProductImageAddDto request);
+    Task<ApiResponse<bool>> DeleteImageAsync(int imageId);
+    Task<ApiResponse<bool>> SetPrimaryAsync(int imageId, int productId);
+}
+
+
 /// <summary>
 /// Category Service Interface
 /// </summary>
@@ -46,6 +61,8 @@ public interface IOrderService
     Task<ApiResponse<OrderResponseDto>> CreateOrderAsync(OrderCreateRequestDto request);
     Task<ApiResponse<OrderResponseDto>> GetOrderByIdAsync(int orderId);
     Task<ApiResponse<PaginatedResponse<OrderResponseDto>>> GetOrdersByTenantAsync(int tenantId, int pageNumber = 1, int pageSize = 10);
+    Task<ApiResponse<List<OrderResponseDto>>> GetAllOrdersByTenantAsync(int tenantId); // ✅ NEW
+
     Task<ApiResponse<bool>> UpdateOrderAsync(int orderId, OrderUpdateRequestDto request);
     Task<ApiResponse<bool>> DeleteOrderAsync(int orderId);
     Task<ApiResponse<OrderDetailResponseDto>> AddOrderDetailAsync(OrderDetailRequestDto request);
